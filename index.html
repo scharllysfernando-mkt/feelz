@@ -231,8 +231,8 @@ function Login({onLogin}){
           <div style={{fontSize:12,color:'#64748b',fontWeight:500,marginTop:8,letterSpacing:'-0.2px'}}>Conectando pessoas, concluindo negócios.</div>
         </div>
         <div className="form-group">
-          <label className="form-label">E-mail</label>
-          <input className="form-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@althoff.com.br" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+          <label className="form-label">Usuário</label>
+          <input className="form-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
         </div>
         <div className="form-group">
           <label className="form-label">Senha</label>

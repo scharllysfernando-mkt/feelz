@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Althoff CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Loading Screen */
+#loading-screen{position:fixed;inset:0;background:#102136;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'Inter',sans-serif}
+.loader-content{text-align:center}
+.loader-logo{font-size:48px;font-weight:900;color:#fff;margin-bottom:32px;letter-spacing:-1px}
+.spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.1);border-top-color:#00a8ff;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{color:rgba(255,255,255,0.7);font-size:14px;font-weight:500}
+
+/* Main Styles */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%}
+body{background:#f4f7f9;color:#2d3748;font-family:'Inter',sans-serif;font-size:14px;line-height:1.5}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:#a0aec0}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeIn 0.3s ease}
+
+/* Layout */
+.app-container{display:flex;height:100vh;width:100%;overflow:hidden}
+.sidebar{width:200px;background:#102136;display:flex;flex-direction:column;color:#fff;flex-shrink:0;box-shadow:2px 0 8px rgba(0,0,0,0.1);transition:width 0.3s ease}
+@media(min-width:1440px){ .sidebar{width:260px} }
+.sidebar-header{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.sidebar-logo{font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-align:center}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:4px 0;border-radius:10px;cursor:pointer;color:#fff;transition:all 0.2s;font-weight:500;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:#fff}
+.nav-item.active{background:#00a8ff;color:#fff;box-shadow:0 4px 12px rgba(0,168,255,0.3)}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.main-layout{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
+.topbar-left{display:flex;align-items:center;gap:16px;flex:1}
+.search-box{display:flex;align-items:center;gap:10px;background:#f1f5f9;border-radius:10px;padding:8px 16px;width:100%;max-width:400px;transition:all 0.2s}
+.search-box:focus-within{background:#fff;border:1px solid #00a8ff;box-shadow:0 0 0 3px rgba(0,168,255,0.1)}
+.search-box input{background:transparent;border:none;outline:none;color:#1a202c;width:100%;font-size:13px}
+.topbar-right{display:flex;align-items:center;gap:20px}
+.user-info{display:flex;align-items:center;gap:12px;cursor:pointer}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#00a8ff 0%,#0056b3 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+
+.content-area{flex:1;overflow-y:auto;padding:32px;background:#f4f7f9}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.page-title{font-size:28px;font-weight:800;color:#102136}
+
+/* Cards */
+.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(0,0,0,0.03);border:1px solid #eef2f6;transition:all 0.2s}
+.card:hover{box-shadow:0 8px 30px rgba(0,0,0,0.06)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;border:none;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.2s;white-space:nowrap;user-select:none}
+.btn-primary{background:#00a8ff;color:#fff;box-shadow:0 4px 12px rgba(0,168,255,0.2)}
+.btn-primary:hover{background:#0091db;transform:translateY(-1px)}
+.btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+.btn-secondary:hover{background:#e2e8f0}
+.btn-danger{background:#fff5f5;color:#e53e3e;border:1px solid #feb2b2}
+.btn-danger:hover{background:#e53e3e;color:#fff}
+.btn-sm{padding:8px 14px;font-size:12px;border-radius:8px}
+
+/* Pipeline */
+.pipeline-scroll{display:flex;gap:20px;overflow-x:auto;padding-bottom:20px}
+.pipeline-col{flex:0 0 300px;background:#ebf0f5;border-radius:16px;padding:16px;display:flex;flex-direction:column;min-height:500px}
+.col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:0 4px}
+.col-title{font-size:13px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}
+.col-count{background:#fff;color:#64748b;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.lead-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.02);border:2px solid transparent;transition:all 0.2s}
+.lead-card:hover{border-color:#00a8ff;transform:translateY(-2px)}
+.lead-name{font-size:14px;font-weight:700;color:#102136;margin-bottom:4px}
+.lead-interest{font-size:12px;color:#64748b;margin-bottom:12px}
+.lead-footer{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid #f1f5f9}
+.lead-value{font-size:14px;font-weight:800;color:#00a8ff}
+
+/* Badges */
+.badge{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;display:inline-block}
+.badge-blue{background:#e0f2fe;color:#0369a1}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-red{background:#fee2e2;color:#b91c1c}
+.badge-yellow{background:#fef3c7;color:#b45309}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(16,33,54,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:#fff;border-radius:24px;padding:32px;width:90%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,0.2)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.modal-title{font-size:20px;font-weight:800;color:#102136}
+
+/* Forms */
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px}
+.form-input{width:100%;background:#f8fafc;border:2px solid #f1f5f9;border-radius:12px;padding:12px 16px;font-size:14px;transition:all 0.2s;outline:none}
+.form-input:focus{border-color:#00a8ff;background:#fff}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:32px}
+.stat-box{background:#fff;border-radius:20px;padding:24px;text-align:center;border:1px solid #eef2f6}
+.stat-val{font-size:32px;font-weight:800;color:#102136;margin-bottom:4px}
+.stat-lbl{font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase}
+
+/* Dispatch */
+.dispatch-grid{display:grid;grid-template-columns:280px 1fr;gap:24px}
+.dispatch-preview{background:#102136;border-radius:16px;padding:24px;color:#fff;min-height:300px;position:relative}
+.whatsapp-bubble{background:#056162;border-radius:12px 12px 2px 12px;padding:12px 16px;max-width:85%;margin-left:auto;font-size:13px;line-height:1.6;white-space:pre-wrap}
+
+/* Responsive */
+@media(min-width:1440px){
+  .sidebar-logo{font-size:20px}
+  .nav-item{padding:14px 16px;gap:12px}
+  .nav-icon{width:20px;height:20px}
+  .sidebar-text{font-size:13px !important}
+}
+@media(max-width:1024px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:768px){
+  .app-container{flex-direction:column}
+  .sidebar{width:100%;height:auto;flex-direction:row;overflow-x:auto}
+  .sidebar-header{padding:12px}
+  .sidebar-nav{display:flex;padding:8px}
+  .nav-item{margin:0 4px;padding:8px 12px}
+  .content-area{padding:16px}
+  .dispatch-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+    <div id="loading-screen">
+  <div class="loader-content">
+    <div class="loader-logo" style="letter-spacing: 2px;">FEELZ</div>
+    <div class="spinner"></div>
+    <div class="loader-text">Iniciando conexões...</div>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef}=React;
+
+const db=supabase.createClient(
+  'https://gkkvhfypdjxmfewpjwoi.supabase.co',
+  'sb_publishable_DHMCxeRqQ7LICeLSYWiIzQ_m71RzH-t'
+);
+
+const ST=['Novo','Contato Feito','Visita Agendada','Proposta','Negociando','Fechado','Perdido'];
+const SC={Novo:'#3B82F6','Contato Feito':'#8B5CF6','Visita Agendada':'#f59e0b',Proposta:'#F97316',Negociando:'#06B6D4',Fechado:'#22C55E',Perdido:'#EF4444'};
+const fmt=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(v||0);
+const fmtDate=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+
+const WA_TPL=[
+  {name:'Boas-vindas',fn:(l,b)=>`Olá, *${l}*! 😊\n\nSou *${b}* da *Feelz*, conectando você ao seu próximo imóvel comercial.\n\nRecebi seu contato e estou à disposição para ajudar. Podemos conversar? 🏢\n\n*${b}* — Feelz`},
+  {name:'Confirmação de Visita',fn:(l,b)=>`Olá, *${l}*! 🏢\n\nConfirmando nossa visita. Qualquer dúvida é só avisar!\n\n*${b}* — Feelz`},
+  {name:'Envio de Proposta',fn:(l,b)=>`Olá, *${l}*! 📋\n\nSegue a proposta preparada para você. Estou à disposição para negociar. 🤝\n\n*${b}* — Feelz`},
+  {name:'Follow-up',fn:(l,b)=>`Olá, *${l}*! Como você está?\n\nGostaria de saber se podemos avançar. Estou aqui! 😊\n\n*${b}* — Feelz`},
+];
+
+const Icon=({n,s=20,c='currentColor'})=>{
+  const paths={
+    dash:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    users:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+    bld:'M6 22V12h12v10M2 22h20M12 2L2 9h20z',
+    cal:'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    task:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+    chart:'M18 20V10M12 20V4M6 20v-6',
+    send:'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+    plus:'M12 5v14M5 12h14',
+    search:'M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z',
+    edit:'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+    trash:'M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    copy:'M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M17 9h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2z',
+    settings:'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  };
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d={paths[n]||'M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0 -20 0'}/>
+    </svg>
+  );
+};
+
+const Avatar=({u,s=36})=>(
+  <div style={{width:s,height:s,borderRadius:'50%',background:'linear-gradient(135deg,#00a8ff 0%,#0056b3 100%)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:800,fontSize:s*0.4,flexShrink:0}}>
+    {u?.iniciais||'?'}
+  </div>
+);
+
+// ── Login ──
+function Login({onLogin}){
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+
+  const doLogin=async()=>{
+    if(!email||!pass){setErr('Preencha tudo');return;}
+    setLoading(true);
+    try{
+      const {data,error}=await db.from('corretores').select('*').eq('email',email.trim().toLowerCase()).eq('senha',pass).single();
+      if(error||!data){setErr('Dados incorretos');setLoading(false);return;}
+      onLogin(data);
+    }catch(e){
+      setErr('Erro ao conectar');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#102136'}}>
+      <div style={{width:400,padding:40,background:'#fff',borderRadius:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <div style={{fontSize:48,fontWeight:900,color:'#102136',letterSpacing:-3,lineHeight:1}}>FEELZ</div>
+          <div style={{fontSize:12,color:'#64748b',fontWeight:500,marginTop:8,letterSpacing:'-0.2px'}}>Conectando pessoas, concluindo negócios.</div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">E-mail</label>
+          <input className="form-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@althoff.com.br" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Senha</label>
+          <input className="form-input" type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+        </div>
+        {err&&<div style={{color:'#e53e3e',fontSize:13,marginBottom:16,textAlign:'center',fontWeight:600}}>{err}</div>}
+        <button className="btn btn-primary" style={{width:'100%',justifyContent:'center'}} onClick={doLogin} disabled={loading}>
+          {loading?'Entrando...':'Entrar na Conta'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ──
+function Dashboard({leads,imoveis,tarefas,user}){
+  const myLeads=user.is_admin?leads:leads.filter(l=>l.corretor_id===user.id);
+  const pipeline=myLeads.filter(l=>!['Fechado','Perdido'].includes(l.status)).reduce((s,l)=>s+(l.valor||0),0);
+  const closed=myLeads.filter(l=>l.status==='Fechado').length;
+  const pending=tarefas.filter(t=>!t.concluida&&(user.is_admin||t.corretor_id===user.id)).length;
+
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Dashboard</h1>
+      </div>
+      <div className="stats-grid">
+        <div className="stat-box">
+          <div className="stat-val">{myLeads.length}</div>
+          <div className="stat-lbl">Total de Leads</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-val" style={{fontSize:24}}>{fmt(pipeline)}</div>
+          <div className="stat-lbl">Pipeline Ativo</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-val" style={{color:'#22C55E'}}>{closed}</div>
+          <div className="stat-lbl">Fechamentos</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-val" style={{color:'#f59e0b'}}>{pending}</div>
+          <div className="stat-lbl">Tarefas Pendentes</div>
+        </div>
+      </div>
+      <div className="card">
+        <h3 style={{fontSize:18,fontWeight:800,marginBottom:20,color:'#102136'}}>Atividades Recentes</h3>
+        {myLeads.slice(0,5).map(l=>(
+          <div key={l.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 0',borderBottom:'1px solid #f1f5f9'}}>
+            <div>
+              <div style={{fontWeight:700,color:'#102136'}}>{l.nome}</div>
+              <div style={{fontSize:12,color:'#64748b'}}>{l.interesse||'Interesse não definido'}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:800,color:'#00a8ff'}}>{fmt(l.valor)}</div>
+              <div style={{fontSize:11,fontWeight:700,color:SC[l.status]}}>{l.status}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Leads (Pipeline) ──
+function Pipeline({leads,setLeads,imoveis,user}){
+  const [search,setSearch]=useState('');
+  const [modal,setModal]=useState(null);
+  const [editLead,setEditLead]=useState(null);
+  const [formData,setFormData]=useState({nome:'',telefone:'',email:'',interesse:'',status:'Novo',valor:'',imovel_id:'',origem:'',corretor_id:user.id});
+
+  const filtered=leads.filter(l=>(user.is_admin||l.corretor_id===user.id) && (!search||l.nome.toLowerCase().includes(search.toLowerCase())));
+
+  const saveLead=async()=>{
+    if(!formData.nome)return;
+    if(editLead){
+      const {data}=await db.from('leads').update(formData).eq('id',editLead.id).select().single();
+      if(data)setLeads(leads.map(l=>l.id===data.id?data:l));
+    }else{
+      const {data}=await db.from('leads').insert(formData).select().single();
+      if(data)setLeads([data,...leads]);
+    }
+    setModal(null);
+    setEditLead(null);
+  };
+
+  const moveLead=async(id,s)=>{
+    const {data}=await db.from('leads').update({status:s}).eq('id',id).select().single();
+    if(data)setLeads(leads.map(l=>l.id===data.id?data:l));
+  };
+
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Leads / Pipeline</h1>
+        <button className="btn btn-primary" onClick={()=>{setFormData({nome:'',telefone:'',email:'',interesse:'',status:'Novo',valor:'',imovel_id:'',origem:'',corretor_id:user.id});setModal('form');}}>
+          <Icon n="plus" s={18}/> Novo Lead
+        </button>
+      </div>
+      <div className="search-box" style={{marginBottom:24}}>
+        <Icon n="search" s={16} c="#64748b"/>
+        <input placeholder="Buscar por nome do lead..." value={search} onChange={e=>setSearch(e.target.value)}/>
+      </div>
+      <div className="pipeline-scroll">
+        {ST.map(status=>(
+          <div key={status} className="pipeline-col">
+            <div className="col-header">
+              <span className="col-title">{status}</span>
+              <span className="col-count">{filtered.filter(l=>l.status===status).length}</span>
+            </div>
+            {filtered.filter(l=>l.status===status).map(l=>(
+              <div key={l.id} className="lead-card" onClick={()=>{setEditLead(l);setFormData(l);setModal('form');}}>
+                <div className="lead-name">{l.nome}</div>
+                <div className="lead-interest">{l.interesse||'—'}</div>
+                <div className="lead-footer">
+                  <span className="lead-value">{fmt(l.valor)}</span>
+                  <div style={{display:'flex',gap:4}}>
+                    {ST.filter(s=>s!==status).slice(0,2).map(s=>(
+                      <button key={s} onClick={e=>{e.stopPropagation();moveLead(l.id,s);}} style={{fontSize:9,padding:'2px 6px',borderRadius:4,border:'none',background:SC[s]+'20',color:SC[s],fontWeight:800,cursor:'pointer'}}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {modal==='form'&&(
+        <div className="modal-overlay" onClick={()=>setModal(null)}>
+          <div className="modal-content" onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{editLead?'Editar Lead':'Novo Lead'}</h2>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:24,cursor:'pointer'}}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nome do Lead</label>
+              <input className="form-input" value={formData.nome} onChange={e=>setFormData({...formData,nome:e.target.value})}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="form-group">
+                <label className="form-label">Telefone</label>
+                <input className="form-input" value={formData.telefone} onChange={e=>setFormData({...formData,telefone:e.target.value})}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Valor</label>
+                <input className="form-input" type="number" value={formData.valor} onChange={e=>setFormData({...formData,valor:e.target.value})}/>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-input" value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})}>
+                {ST.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{display:'flex',gap:12,marginTop:24}}>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={()=>setModal(null)}>Cancelar</button>
+              <button className="btn btn-primary" style={{flex:1}} onClick={saveLead}>Salvar Lead</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Imóveis ──
+function Imoveis({imoveis,setImoveis,user}){
+  const [modal,setModal]=useState(null);
+  const [editImovel,setEditImovel]=useState(null);
+  const [formData,setFormData]=useState({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
+
+  const saveImovel=async()=>{
+    if(!formData.titulo)return;
+    if(editImovel){
+      const {data}=await db.from('imoveis').update(formData).eq('id',editImovel.id).select().single();
+      if(data)setImoveis(imoveis.map(i=>i.id===data.id?data:i));
+    }else{
+      const {data}=await db.from('imoveis').insert(formData).select().single();
+      if(data)setImoveis([data,...imoveis]);
+    }
+    setModal(null);
+    setEditImovel(null);
+  };
+
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Imóveis</h1>
+        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});setModal('form');}}>
+          <Icon n="plus" s={18}/> Novo Imóvel
+        </button>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))',gap:20}}>
+        {imoveis.map(i=>(
+          <div key={i.id} className="card" onClick={()=>{setEditImovel(i);setFormData(i);setModal('form');}} style={{cursor:'pointer'}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
+              <span className="badge badge-blue">{i.tipo}</span>
+              <span className={`badge ${i.status==='Disponível'?'badge-green':'badge-yellow'}`}>{i.status}</span>
+            </div>
+            <h3 style={{fontSize:16,fontWeight:800,marginBottom:8,color:'#102136'}}>{i.titulo}</h3>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>{i.localizacao}</p>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
+              <span style={{fontWeight:800,color:'#00a8ff'}}>{fmt(i.preco || i.aluguel)}</span>
+              <span style={{fontSize:12,color:'#64748b'}}>{i.area} m²</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {modal==='form'&&(
+        <div className="modal-overlay" onClick={()=>setModal(null)}>
+          <div className="modal-content" onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{editImovel?'Editar Imóvel':'Novo Imóvel'}</h2>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:24,cursor:'pointer'}}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Título</label>
+              <input className="form-input" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="form-group">
+                <label className="form-label">Preço Venda</label>
+                <input className="form-input" type="number" value={formData.preco} onChange={e=>setFormData({...formData,preco:e.target.value})}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Área (m²)</label>
+                <input className="form-input" type="number" value={formData.area} onChange={e=>setFormData({...formData,area:e.target.value})}/>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:12,marginTop:24}}>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={()=>setModal(null)}>Cancelar</button>
+              <button className="btn btn-primary" style={{flex:1}} onClick={saveImovel}>Salvar Imóvel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Agenda ──
+function Agenda({visitas,leads,imoveis,user}){
+  const myVisits=user.is_admin?visitas:visitas.filter(v=>v.corretor_id===user.id);
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Agenda de Visitas</h1>
+      </div>
+      <div className="card">
+        {myVisits.length===0?(
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
+            <div className="empty-state-text">Nenhuma visita agendada</div>
+          </div>
+        ):(
+          myVisits.map(v=>(
+            <div key={v.id} style={{display:'flex',alignItems:'center',gap:16,padding:'16px 0',borderBottom:'1px solid #f1f5f9'}}>
+              <div style={{background:'#f1f5f9',padding:'8px 12px',borderRadius:12,textAlign:'center',minWidth:60}}>
+                <div style={{fontSize:10,fontWeight:800,color:'#64748b'}}>{new Date(v.data).toLocaleDateString('pt-BR',{month:'short'}).toUpperCase()}</div>
+                <div style={{fontSize:18,fontWeight:800,color:'#102136'}}>{new Date(v.data).getDate()}</div>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,color:'#102136'}}>{v.lead_nome || 'Visita'}</div>
+                <div style={{fontSize:12,color:'#64748b'}}>{v.imovel_titulo || 'Imóvel não especificado'}</div>
+              </div>
+              <div style={{fontSize:13,fontWeight:700,color:'#00a8ff'}}>{v.hora}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Tarefas ──
+function Tarefas({tarefas,setTarefas,user}){
+  const myTasks=user.is_admin?tarefas:tarefas.filter(t=>t.corretor_id===user.id);
+  const toggleTask=async(id,c)=>{
+    const {data}=await db.from('tarefas').update({concluida:!c}).eq('id',id).select().single();
+    if(data)setTarefas(tarefas.map(t=>t.id===data.id?data:t));
+  };
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Tarefas</h1>
+      </div>
+      <div className="card">
+        {myTasks.map(t=>(
+          <div key={t.id} style={{display:'flex',alignItems:'center',gap:16,padding:'16px 0',borderBottom:'1px solid #f1f5f9',opacity:t.concluida?0.5:1}}>
+            <div onClick={()=>toggleTask(t.id,t.concluida)} style={{cursor:'pointer',width:24,height:24,borderRadius:6,border:'2px solid #00a8ff',display:'flex',alignItems:'center',justifyContent:'center',background:t.concluida?'#00a8ff':'transparent'}}>
+              {t.concluida&&<span style={{color:'#fff',fontSize:14}}>✓</span>}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,color:'#102136',textDecoration:t.concluida?'line-through':'none'}}>{t.titulo}</div>
+              <div style={{fontSize:12,color:'#64748b'}}>{fmtDate(t.prazo)}</div>
+            </div>
+            <span className={`badge ${t.prioridade==='Alta'?'badge-red':t.prioridade==='Média'?'badge-yellow':'badge-blue'}`}>{t.prioridade}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Relatórios ──
+function Relatorios({leads,corretores,user}){
+  if(!user.is_admin) return <div className="fade"><h1 className="page-title">Relatórios</h1><p>Acesso restrito a administradores.</p></div>;
+  const stats=corretores.filter(c=>!c.is_admin).map(c=>{
+    const mLeads=leads.filter(l=>l.corretor_id===c.id);
+    const mFechados=mLeads.filter(l=>l.status==='Fechado').length;
+    const mPipeline=mLeads.filter(l=>!['Fechado','Perdido'].includes(l.status)).reduce((s,l)=>s+(l.valor||0),0);
+    return {nome:c.nome,total:mLeads.length,fechados:mFechados,pipeline:mPipeline};
+  });
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Relatórios</h1>
+      </div>
+      <div className="card">
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{textAlign:'left',borderBottom:'2px solid #f1f5f9'}}>
+              <th style={{padding:'12px 8px',fontSize:12,color:'#64748b'}}>CORRETOR</th>
+              <th style={{padding:'12px 8px',fontSize:12,color:'#64748b'}}>LEADS</th>
+              <th style={{padding:'12px 8px',fontSize:12,color:'#64748b'}}>FECHADOS</th>
+              <th style={{padding:'12px 8px',fontSize:12,color:'#64748b'}}>PIPELINE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map(s=>(
+              <tr key={s.nome} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'16px 8px',fontWeight:700}}>{s.nome}</td>
+                <td style={{padding:'16px 8px'}}>{s.total}</td>
+                <td style={{padding:'16px 8px',color:'#22C55E',fontWeight:700}}>{s.fechados}</td>
+                <td style={{padding:'16px 8px',color:'#00a8ff',fontWeight:800}}>{fmt(s.pipeline)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Disparos ──
+function Disparos({user}){
+  const [tIdx,setTIdx]=useState(0);
+  const [lead,setLead]=useState('');
+  const [copied,setCopied]=useState(false);
+  const preview=WA_TPL[tIdx].fn(lead||'Cliente',user.nome);
+  const copy=()=>{ navigator.clipboard.writeText(preview); setCopied(true); setTimeout(()=>setCopied(false),2000); };
+  return (
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Disparos</h1>
+      </div>
+      <div className="dispatch-grid">
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="card" style={{padding:16}}>
+            <label className="form-label">Nome do Lead</label>
+            <input className="form-input" value={lead} onChange={e=>setLead(e.target.value)} placeholder="Ex: João Silva"/>
+          </div>
+          <div className="card" style={{padding:16}}>
+            <label className="form-label">Modelos WhatsApp</label>
+            {WA_TPL.map((t,i)=>(
+              <div key={i} onClick={()=>setTIdx(i)} style={{padding:'10px 12px',borderRadius:10,cursor:'pointer',marginBottom:4,background:tIdx===i?'#00a8ff':'transparent',color:tIdx===i?'#fff':'#64748b',fontSize:13,fontWeight:600}}>
+                {t.name}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="dispatch-preview">
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+            <span style={{fontSize:12,fontWeight:800,color:'rgba(255,255,255,0.5)'}}>PRÉVIA WHATSAPP</span>
+            <button className="btn btn-sm" style={{background:copied?'#22C55E':'rgba(255,255,255,0.1)',color:'#fff'}} onClick={copy}>
+              <Icon n="copy" s={14}/> {copied?'Copiado!':'Copiar Texto'}
+            </button>
+          </div>
+          <div className="whatsapp-bubble">{preview}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ──
+function App(){
+  const [user,setUser]=useState(null);
+  const [sec,setSec]=useState('dashboard');
+  const [leads,setLeads]=useState([]);
+  const [imoveis,setImoveis]=useState([]);
+  const [tarefas,setTarefas]=useState([]);
+  const [visitas,setVisitas]=useState([]);
+  const [corretores,setCorretores]=useState([]);
+  const [loading,setLoading]=useState(false);
+
+  useEffect(()=>{ if(user)load(); },[user]);
+
+  const load=async()=>{
+    setLoading(true);
+    try{
+      const [l,im,t,v,c]=await Promise.all([
+        db.from('leads').select('*').order('criado_em',{ascending:false}),
+        db.from('imoveis').select('*').order('criado_em',{ascending:false}),
+        db.from('tarefas').select('*').order('criado_em',{ascending:false}),
+        db.from('visitas').select('*').order('data',{ascending:false}),
+        db.from('corretores').select('*')
+      ]);
+      setLeads(l.data||[]);
+      setImoveis(im.data||[]);
+      setTarefas(t.data||[]);
+      setVisitas(v.data||[]);
+      setCorretores(c.data||[]);
+    }catch(e){ console.error(e); }
+    setLoading(false);
+    document.getElementById('loading-screen')?.remove();
+  };
+
+  if(!user) return <Login onLogin={setUser}/>;
+
+  const nav=[
+    {id:'dashboard',n:'dash',l:'Dashboard'},
+    {id:'pipeline',n:'users',l:'Leads'},
+    {id:'imoveis',n:'bld',l:'Imóveis'},
+    {id:'agenda',n:'cal',l:'Agenda'},
+    {id:'tarefas',n:'task',l:'Tarefas'},
+    {id:'relatorios',n:'chart',l:'Relatórios'},
+    {id:'dispatch',n:'send',l:'Disparos'},
+  ];
+
+  return (
+    <div className="app-container">
+      <div className="sidebar">
+        <div className="sidebar-header" style={{padding:'24px 16px'}}>
+          <div style={{
+            border: '1px solid rgba(255,255,255,0.8)',
+            borderRadius: '20px',
+            padding: '8px 0',
+            textAlign: 'center',
+            fontSize: '16px',
+            fontWeight: '800',
+            letterSpacing: '2px',
+            color: '#fff',
+            textTransform: 'uppercase'
+          }}>FEELZ</div>
+        </div>
+        <nav className="sidebar-nav">
+          {nav.map(i=>(
+            <div key={i.id} className={`nav-item ${sec===i.id?'active':''}`} onClick={()=>setSec(i.id)}>
+              <div className="nav-icon"><Icon n={i.n} s={18} c="#fff"/></div>
+              <span style={{fontSize:'13px'}}>{i.l}</span>
+            </div>
+          ))}
+        </nav>
+        <div style={{borderTop:'1px solid rgba(255,255,255,0.1)',display:'flex',alignItems:'stretch'}}>
+          <div style={{padding:'16px 8px',cursor:'pointer',color:'#fff',opacity:0.6,transition:'opacity 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',flex:1}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0.6}>
+            <Icon n="settings" s={16}/>
+            <span className="sidebar-text" style={{fontSize:'11px',fontWeight:'500'}}>Configs</span>
+          </div>
+          <div style={{width:'2px',background:'rgba(255,255,255,0.2)',margin:'0'}}></div>
+          <div onClick={()=>setUser(null)} style={{padding:'16px 8px',cursor:'pointer',color:'#fff',opacity:0.6,transition:'opacity 0.2s',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',flex:1}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0.6}>
+            <Icon n="send" s={16}/>
+            <span className="sidebar-text" style={{fontSize:'11px',fontWeight:'500'}}>Sair</span>
+          </div>
+        </div>
+      </div>
+      <div className="main-layout">
+        <div className="topbar">
+          <div className="topbar-left">
+            <div className="search-box">
+              <Icon n="search" s={16} c="#64748b"/>
+              <input placeholder="Pesquisa global..."/>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <div className="user-info">
+              <div style={{textAlign:'right'}}>
+                <div style={{fontWeight:800,fontSize:13,color:'#102136'}}>{user.nome}</div>
+                <div style={{fontSize:11,color:'#64748b',fontWeight:700}}>{user.is_admin?'ADMIN':'CORRETOR'}</div>
+              </div>
+              <Avatar u={user}/>
+            </div>
+          </div>
+        </div>
+        <div className="content-area">
+          {loading ? <div style={{textAlign:'center',padding:100}}><div className="spinner" style={{borderTopColor:'#00a8ff'}}></div></div> : (
+            <>
+              {sec==='dashboard'&&<Dashboard leads={leads} imoveis={imoveis} tarefas={tarefas} user={user}/>}
+              {sec==='pipeline'&&<Pipeline leads={leads} setLeads={setLeads} imoveis={imoveis} user={user}/>}
+              {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user}/>}
+              {sec==='agenda'&&<Agenda visitas={visitas} leads={leads} imoveis={imoveis} user={user}/>}
+              {sec==='tarefas'&&<Tarefas tarefas={tarefas} setTarefas={setTarefas} user={user}/>}
+              {sec==='relatorios'&&<Relatorios leads={leads} corretores={corretores} user={user}/>}
+              {sec==='dispatch'&&<Disparos user={user}/>}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>,document.getElementById('root'));
+setTimeout(()=>{ document.getElementById('loading-screen')?.remove(); },500);
+</script>
+</body>
+</html>

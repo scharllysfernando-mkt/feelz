@@ -675,16 +675,22 @@ function App(){
       <div className="sidebar">
         <div className="sidebar-header" style={{padding:'24px 16px'}}>
           <div style={{
-            border: '1px solid rgba(255,255,255,0.8)',
+            background: 'linear-gradient(135deg, #2b9fef, #f5a6c0)',
             borderRadius: '20px',
-            padding: '8px 0',
-            textAlign: 'center',
-            fontSize: '16px',
-            fontWeight: '800',
-            letterSpacing: '2px',
-            color: '#fff',
-            textTransform: 'uppercase'
-          }}>FEELZ</div>
+            padding: '2px',
+          }}>
+            <div style={{
+              background: '#102136',
+              borderRadius: '18px',
+              padding: '8px 0',
+              textAlign: 'center',
+              fontSize: '16px',
+              fontWeight: '800',
+              letterSpacing: '2px',
+              color: '#fff',
+              textTransform: 'uppercase'
+            }}>FEELZ</div>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {nav.map(i=>(

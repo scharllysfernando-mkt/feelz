@@ -119,6 +119,9 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
   .sidebar-text{font-size:13px !important}
 }
 @media(max-width:1024px){ .stats-grid{grid-template-columns:repeat(2,1fr)} }
+
+  .login-card-wrap .feelz-title{font-size:30px!important}
+}
 @media(max-width:768px){
   .app-container{flex-direction:column}
   .sidebar{width:100%;height:auto;flex-direction:row;overflow-x:auto}
@@ -130,6 +133,38 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
 }
 
 
+
+
+  .login-responsive input{padding:8px 12px!important;font-size:12px!important}
+  .login-responsive button{padding:9px 14px!important;font-size:12px!important}
+}
+
+@media(max-width:1400px){
+  .login-responsive{width:240px!important;max-width:240px!important;padding:24px!important}
+  .login-responsive .feelz-logo{font-size:32px!important}
+  .login-responsive .form-input{padding:9px 12px!important;font-size:13px!important}
+  .login-responsive .btn{padding:9px 16px!important;font-size:13px!important}
+  .login-responsive .form-group{margin-bottom:8px!important}
+  .login-responsive .form-label{font-size:11px!important}
+}
+
+
+
+@media(max-width:1400px){
+  .form-label{font-size:11px!important;margin-bottom:5px!important}
+  .form-input{padding:9px 12px!important;font-size:12px!important}
+  .btn-primary{padding:10px!important;font-size:13px!important}
+  .form-group{margin-bottom:12px!important}
+}
+
+@media(min-width:1400px){
+  .login-card-size{width:400px!important;padding:40px!important}
+  .login-card-size .feelz-logo{font-size:48px!important}
+  .login-card-size .login-subtitle{font-size:12px!important}
+  .login-card-size .form-input{padding:12px 16px!important;font-size:14px!important}
+  .login-card-size .btn-primary{padding:12px!important;font-size:14px!important}
+  .login-card-size .form-group{margin-bottom:20px!important}
+}
 </style>
 </head>
 <body>
@@ -228,10 +263,10 @@ function Login({onLogin}){
 
   return (
     <div style={{height:'100vh',width:'100vw',display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',position:'fixed',top:0,left:0,zIndex:1}}>
-      <div style={{width:400,padding:40,background:'#fff',borderRadius:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
-        <div style={{textAlign:'center',marginBottom:32}}>
-          <div style={{fontSize:48,fontWeight:900,color:'#102136',letterSpacing:-3,lineHeight:1}}>FEELZ</div>
-          <div style={{fontSize:12,color:'#64748b',fontWeight:500,marginTop:8,letterSpacing:'-0.2px'}}>Conectando pessoas, concluindo negócios.</div>
+      <div className='login-card-size' style={{width:'300px',padding:'32px 28px',background:'#fff',borderRadius:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+        <div style={{textAlign:'center',marginBottom:20}}>
+          <div className='feelz-logo' className='feelz-logo' style={{fontSize:'36px',fontWeight:900,color:'#102136',letterSpacing:-3,lineHeight:1}}>FEELZ</div>
+          <div className='login-subtitle' style={{fontSize:'11px',color:'#64748b',fontWeight:500,marginTop:6,letterSpacing:'-0.2px'}}>Conectando pessoas, concluindo negócios.</div>
         </div>
         <div className="form-group">
           <label className="form-label">Usuário</label>

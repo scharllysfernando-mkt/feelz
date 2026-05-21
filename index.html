@@ -496,6 +496,21 @@ function Imoveis({imoveis,setImoveis,user}){
   const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
   const [formData,setFormData]=useState({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
+  const [uploadingFoto,setUploadingFoto]=useState(false);
+
+  const handleFotoUpload=async(file)=>{
+    setUploadingFoto(true);
+    const ext=file.name.split('.').pop();
+    const fileName=`imovel_${Date.now()}.${ext}`;
+    const {data,error}=await db.storage.from('imoveis').upload(fileName,file,{upsert:true});
+    if(!error){
+      const {data:url}=db.storage.from('imoveis').getPublicUrl(fileName);
+      setFormData(f=>({...f,foto_url:url.publicUrl}));
+    }else{
+      alert('Erro ao fazer upload: '+error.message);
+    }
+    setUploadingFoto(false);
+  };
   const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
 
   const saveImovel=async(data)=>{
@@ -674,7 +689,28 @@ function Imoveis({imoveis,setImoveis,user}){
               <div className="form-group"><label className="form-label">Venda (R$)</label><input className="form-input" type="number" value={formData.preco} onChange={e=>setFormData({...formData,preco:e.target.value})}/></div>
               <div className="form-group"><label className="form-label">Aluguel/mês</label><input className="form-input" type="number" value={formData.aluguel} onChange={e=>setFormData({...formData,aluguel:e.target.value})}/></div>
             </div>
-            <div className="form-group"><label className="form-label">URL da Foto</label><input className="form-input" placeholder="https://..." value={formData.foto_url||''} onChange={e=>setFormData({...formData,foto_url:e.target.value})}/></div>
+            <div className="form-group">
+              <label className="form-label">Foto do Imóvel</label>
+              <div style={{border:'2px dashed #e2e8f0',borderRadius:10,padding:16,textAlign:'center',cursor:'pointer',background:'#f8fafc',position:'relative'}}
+                onClick={()=>document.getElementById('foto-upload').click()}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor='#2b9fef';}}
+                onDragLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';}}
+                onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor='#e2e8f0';const f=e.dataTransfer.files[0];if(f)handleFotoUpload(f);}}>
+                {uploadingFoto
+                  ?<div style={{color:'#2b9fef',fontSize:13}}>Enviando... ⏳</div>
+                  :formData.foto_url
+                  ?<div>
+                    <img src={formData.foto_url} style={{width:'100%',maxHeight:120,objectFit:'cover',borderRadius:8,marginBottom:8}}/>
+                    <div style={{fontSize:11,color:'#22C55E',fontWeight:600}}>✓ Foto carregada — clique para trocar</div>
+                  </div>
+                  :<div>
+                    <Icon n="bld" s={28} c="#94a3b8"/>
+                    <div style={{fontSize:13,color:'#94a3b8',marginTop:8,fontWeight:500}}>Clique ou arraste a foto aqui</div>
+                    <div style={{fontSize:11,color:'#cbd5e1',marginTop:4}}>JPG, PNG ou WEBP</div>
+                  </div>}
+                <input id="foto-upload" type="file" accept="image/*" style={{display:'none'}} onChange={e=>e.target.files[0]&&handleFotoUpload(e.target.files[0])}/>
+              </div>
+            </div>
             <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-input" rows={3} value={formData.descricao} onChange={e=>setFormData({...formData,descricao:e.target.value})} style={{resize:'vertical'}}/></div>
             <div style={{display:'flex',gap:12,marginTop:8}}>
               <button className="btn btn-secondary" onClick={()=>setModal(null)} style={{flex:1,justifyContent:'center'}}>Cancelar</button>

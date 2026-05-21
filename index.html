@@ -214,6 +214,7 @@ const Icon=({n,s=20,c='currentColor'})=>{
     task:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
     chart:'M18 20V10M12 20V4M6 20v-6',
     send:'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+    download:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
     plus:'M12 5v14M5 12h14',
     search:'M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z',
     edit:'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
@@ -388,9 +389,34 @@ function Pipeline({leads,setLeads,imoveis,user}){
     <div className="fade">
       <div className="page-header">
         <h1 className="page-title">Leads / Pipeline</h1>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
         <button className="btn btn-primary" onClick={()=>{setFormData({nome:'',telefone:'',email:'',interesse:'',status:'Novo',valor:'',imovel_id:'',origem:'',corretor_id:user.id});setModal('form');}}>
           <Icon n="plus" s={18}/> Novo Lead
         </button>
+        <button className="btn btn-secondary" onClick={()=>{
+          const headers=['Nome','Telefone','E-mail','CPF','Interesse','Status','Origem','Criado em'];
+          const rows=myLeads.map(l=>[
+            l.nome||'',
+            l.telefone||'',
+            l.email||'',
+            l.cpf||'',
+            l.interesse||'',
+            l.status||'',
+            l.origem||'',
+            l.criado_em?new Date(l.criado_em).toLocaleDateString('pt-BR'):''
+          ]);
+          const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+          const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement('a');
+          a.href=url;
+          a.download='leads_feelz_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+        }} style={{display:'flex',alignItems:'center',gap:8}}>
+          <Icon n="download" s={16}/> Exportar CSV
+        </button>
+        </div>
       </div>
       <div className="search-box" style={{marginBottom:24}}>
         <Icon n="search" s={16} c="#64748b"/>
@@ -467,70 +493,194 @@ function Pipeline({leads,setLeads,imoveis,user}){
 // ── Imóveis ──
 function Imoveis({imoveis,setImoveis,user}){
   const [modal,setModal]=useState(null);
+  const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
   const [formData,setFormData]=useState({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
+  const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
 
-  const saveImovel=async()=>{
-    if(!formData.titulo)return;
-    if(editImovel){
-      const {data}=await db.from('imoveis').update(formData).eq('id',editImovel.id).select().single();
-      if(data)setImoveis(imoveis.map(i=>i.id===data.id?data:i));
+  const saveImovel=async(data)=>{
+    if(data.id){
+      const {data:d}=await db.from('imoveis').update(data).eq('id',data.id).select().single();
+      if(d)setImoveis(imoveis.map(i=>i.id===d.id?d:i));
     }else{
-      const {data}=await db.from('imoveis').insert(formData).select().single();
-      if(data)setImoveis([data,...imoveis]);
+      const {data:d}=await db.from('imoveis').insert({...data,captador_id:user.id}).select().single();
+      if(d)setImoveis([...imoveis,d]);
     }
-    setModal(null);
-    setEditImovel(null);
+    setModal(null);setEditImovel(null);
   };
 
-  return (
-    <div className="fade">
+  const deleteImovel=async(id)=>{
+    if(!confirm('Excluir este imóvel?'))return;
+    await db.from('imoveis').delete().eq('id',id);
+    setImoveis(imoveis.filter(i=>i.id!==id));
+    if(selected?.id===id)setSelected(null);
+  };
+
+  return(
+    <div className="fade" style={{position:'relative'}}>
       <div className="page-header">
         <h1 className="page-title">Imóveis</h1>
         <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});setModal('form');}}>
-          <Icon n="plus" s={18}/> Novo Imóvel
+          <Icon n="plus" s={18}/> Captar Imóvel
         </button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))',gap:20}}>
-        {imoveis.map(i=>(
-          <div key={i.id} className="card" onClick={()=>{setEditImovel(i);setFormData(i);setModal('form');}} style={{cursor:'pointer'}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
-              <span className="badge badge-blue">{i.tipo}</span>
-              <span className={`badge ${i.status==='Disponível'?'badge-green':'badge-yellow'}`}>{i.status}</span>
+
+      {/* Gallery Grid */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,transition:'all .3s'}}>
+        {imoveis.map(im=>(
+          <div key={im.id} onClick={()=>setSelected(im)}
+            style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected?.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s',transform:selected?.id===im.id?'scale(1.02)':'scale(1)'}}>
+            {/* Vertical image */}
+            <div style={{height:280,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+              {im.foto_url
+                ?<img src={im.foto_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={im.titulo}/>
+                :<div style={{textAlign:'center',padding:20}}>
+                  <Icon n="bld" s={48} c="rgba(255,255,255,0.15)"/>
+                  <div style={{fontSize:11,color:'rgba(255,255,255,0.3)',marginTop:8}}>Sem foto</div>
+                </div>}
+              <div style={{position:'absolute',top:10,left:10,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.tipo}</div>
+              <div style={{position:'absolute',top:10,right:10}}>
+                <span style={{background:`${stC[im.status]||'#888'}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.status}</span>
+              </div>
             </div>
-            <h3 style={{fontSize:16,fontWeight:800,marginBottom:8,color:'#102136'}}>{i.titulo}</h3>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>{i.localizacao}</p>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:12,borderTop:'1px solid #f1f5f9'}}>
-              <span style={{fontWeight:800,color:'#00a8ff'}}>{fmt(i.preco || i.aluguel)}</span>
-              <span style={{fontSize:12,color:'#64748b'}}>{i.area} m²</span>
+            {/* Info */}
+            <div style={{padding:'14px 16px'}}>
+              <div style={{fontSize:14,fontWeight:700,color:'#102136',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.titulo}</div>
+              <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:10}}>
+                <Icon n="pin" s={12} c="#94a3b8"/>
+                <span style={{fontSize:12,color:'#94a3b8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.localizacao}</span>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <div style={{fontSize:10,color:'#94a3b8'}}>Venda</div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#2b9fef'}}>{im.preco?fmt(im.preco):'—'}</div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:10,color:'#94a3b8'}}>Área</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#102136'}}>{im.area}m²</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
+        {imoveis.length===0&&(
+          <div style={{gridColumn:'1/-1',textAlign:'center',padding:'60px 20px',color:'#94a3b8'}}>
+            <Icon n="bld" s={48} c="#e2e8f0"/>
+            <div style={{marginTop:12,fontSize:14}}>Nenhum imóvel cadastrado.</div>
+          </div>
+        )}
       </div>
+
+      {/* Slide-in Detail Panel */}
+      <div style={{position:'fixed',top:0,right:selected?0:'-420px',width:420,height:'100vh',background:'#fff',boxShadow:'-4px 0 24px rgba(0,0,0,0.12)',zIndex:500,transition:'right .3s cubic-bezier(.4,0,.2,1)',display:'flex',flexDirection:'column',overflowY:'auto'}}>
+        {selected&&(<>
+          {/* Header image */}
+          <div style={{height:240,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',flexShrink:0}}>
+            {selected.foto_url
+              ?<img src={selected.foto_url} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="bld" s={64} c="rgba(255,255,255,0.15)"/></div>}
+            <button onClick={()=>setSelected(null)} style={{position:'absolute',top:12,right:12,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',border:'none',borderRadius:8,width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff'}}>
+              <Icon n="x" s={16} c="#fff"/>
+            </button>
+            <div style={{position:'absolute',bottom:12,left:16,right:16}}>
+              <span style={{background:`${stC[selected.status]||'#888'}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{selected.status}</span>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{padding:24,flex:1}}>
+            <div style={{fontSize:18,fontWeight:800,color:'#102136',marginBottom:4,lineHeight:1.3}}>{selected.titulo}</div>
+            <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:20}}>
+              <Icon n="pin" s={13} c="#94a3b8"/>
+              <span style={{fontSize:13,color:'#94a3b8'}}>{selected.localizacao}</span>
+            </div>
+
+            {/* Price cards */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+              <div style={{background:'#f8fafc',borderRadius:10,padding:'12px 14px',border:'1px solid #e2e8f0'}}>
+                <div style={{fontSize:10,color:'#94a3b8',marginBottom:4,fontWeight:600}}>VENDA</div>
+                <div style={{fontSize:18,fontWeight:800,color:'#2b9fef'}}>{selected.preco?fmt(selected.preco):'—'}</div>
+              </div>
+              <div style={{background:'#f8fafc',borderRadius:10,padding:'12px 14px',border:'1px solid #e2e8f0'}}>
+                <div style={{fontSize:10,color:'#94a3b8',marginBottom:4,fontWeight:600}}>ALUGUEL/MÊS</div>
+                <div style={{fontSize:18,fontWeight:800,color:'#102136'}}>{selected.aluguel?fmt(selected.aluguel):'—'}</div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+              {[['Tipo',selected.tipo],['Área',`${selected.area}m²`]].map(([k,v])=>(
+                <div key={k} style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px',border:'1px solid #e2e8f0'}}>
+                  <div style={{fontSize:10,color:'#94a3b8',fontWeight:600}}>{k.toUpperCase()}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#102136',marginTop:2}}>{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {selected.descricao&&(
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:6}}>DESCRIÇÃO</div>
+                <div style={{fontSize:13,color:'#475569',lineHeight:1.7}}>{selected.descricao}</div>
+              </div>
+            )}
+
+            {/* Future simulator placeholder */}
+            <div style={{background:'linear-gradient(135deg,#f0f9ff,#e0f2fe)',borderRadius:12,padding:16,border:'1px dashed #2b9fef',textAlign:'center',marginBottom:20}}>
+              <Icon n="chart" s={24} c="#2b9fef"/>
+              <div style={{fontSize:13,fontWeight:600,color:'#2b9fef',marginTop:8}}>Simulador de Financiamento</div>
+              <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Em breve</div>
+            </div>
+
+            {/* Actions */}
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>{setEditImovel(selected);setFormData(selected);setModal('form');}} className="btn btn-secondary" style={{flex:1,justifyContent:'center'}}>
+                <Icon n="edit" s={15}/> Editar
+              </button>
+              <button onClick={()=>deleteImovel(selected.id)} style={{padding:'9px 14px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:600}}>
+                <Icon n="trash" s={15} c="#DC2626"/>
+              </button>
+            </div>
+          </div>
+        </>)}
+      </div>
+
+      {/* Overlay */}
+      {selected&&<div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.2)',zIndex:499}}/>}
+
+      {/* Form Modal */}
       {modal==='form'&&(
         <div className="modal-overlay" onClick={()=>setModal(null)}>
           <div className="modal-content" onClick={e=>e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">{editImovel?'Editar Imóvel':'Novo Imóvel'}</h2>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:24,cursor:'pointer'}}>✕</button>
+              <h2 className="modal-title">{editImovel?'Editar Imóvel':'Captar Imóvel'}</h2>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8'}}><Icon n="x" s={20}/></button>
             </div>
-            <div className="form-group">
-              <label className="form-label">Título</label>
-              <input className="form-input" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/>
-            </div>
+            <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-              <div className="form-group">
-                <label className="form-label">Preço Venda</label>
-                <input className="form-input" type="number" value={formData.preco} onChange={e=>setFormData({...formData,preco:e.target.value})}/>
+              <div className="form-group"><label className="form-label">Tipo</label>
+                <select className="form-input" value={formData.tipo} onChange={e=>setFormData({...formData,tipo:e.target.value})}>
+                  {['Sala','Loja','Galpão','Conjunto','Escritório','Ponto Comercial','Outro'].map(t=><option key={t}>{t}</option>)}
+                </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Área (m²)</label>
-                <input className="form-input" type="number" value={formData.area} onChange={e=>setFormData({...formData,area:e.target.value})}/>
+              <div className="form-group"><label className="form-label">Status</label>
+                <select className="form-input" value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})}>
+                  {['Disponível','Reservado','Negociando','Vendido'].map(s=><option key={s}>{s}</option>)}
+                </select>
               </div>
             </div>
-            <div style={{display:'flex',gap:12,marginTop:24}}>
-              <button className="btn btn-secondary" style={{flex:1}} onClick={()=>setModal(null)}>Cancelar</button>
-              <button className="btn btn-primary" style={{flex:1}} onClick={saveImovel}>Salvar Imóvel</button>
+            <div className="form-group"><label className="form-label">Localização</label><input className="form-input" value={formData.localizacao} onChange={e=>setFormData({...formData,localizacao:e.target.value})}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+              <div className="form-group"><label className="form-label">Área (m²)</label><input className="form-input" type="number" value={formData.area} onChange={e=>setFormData({...formData,area:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Venda (R$)</label><input className="form-input" type="number" value={formData.preco} onChange={e=>setFormData({...formData,preco:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Aluguel/mês</label><input className="form-input" type="number" value={formData.aluguel} onChange={e=>setFormData({...formData,aluguel:e.target.value})}/></div>
+            </div>
+            <div className="form-group"><label className="form-label">URL da Foto</label><input className="form-input" placeholder="https://..." value={formData.foto_url||''} onChange={e=>setFormData({...formData,foto_url:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-input" rows={3} value={formData.descricao} onChange={e=>setFormData({...formData,descricao:e.target.value})} style={{resize:'vertical'}}/></div>
+            <div style={{display:'flex',gap:12,marginTop:8}}>
+              <button className="btn btn-secondary" onClick={()=>setModal(null)} style={{flex:1,justifyContent:'center'}}>Cancelar</button>
+              <button className="btn btn-primary" onClick={()=>saveImovel({...formData,preco:Number(formData.preco)||0,aluguel:Number(formData.aluguel)||0,area:Number(formData.area)||0,...(editImovel?{id:editImovel.id}:{})})} style={{flex:2,justifyContent:'center'}}>
+                {editImovel?'Salvar':'Registrar Imóvel'}
+              </button>
             </div>
           </div>
         </div>

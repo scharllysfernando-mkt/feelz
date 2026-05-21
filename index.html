@@ -333,6 +333,10 @@ function Dashboard({leads,imoveis,tarefas,user}){
           <div className="stat-val" style={{color:'#f59e0b'}}>{pending}</div>
           <div className="stat-lbl">Tarefas Pendentes</div>
         </div>
+        <div className="stat-box" style={{'--accent':'#2b9fef'}}>
+          <div className="stat-val" style={{color:'#2b9fef'}}>{(imoveis||[]).filter(i=>i.status==='Disponível').length}</div>
+          <div className="stat-lbl">Unidades à Venda</div>
+        </div>
       </div>
       <div className="card">
         <h3 style={{fontSize:18,fontWeight:800,marginBottom:20,color:'#102136'}}>Atividades Recentes</h3>

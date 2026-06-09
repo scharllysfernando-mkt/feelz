@@ -491,13 +491,157 @@ function Pipeline({leads,setLeads,imoveis,user}){
 }
 
 // ── Imóveis ──
+function DetailPanel({selected,onClose,onEdit,onDelete}){
+  const [tab,setTab]=useState('overview');
+  const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
+
+  const parseArr=(val)=>{
+    if(!val)return[];
+    if(Array.isArray(val))return val;
+    try{const p=JSON.parse(val);return Array.isArray(p)?p:[p];}catch(e){return[val];}
+  };
+
+  const fotosInt=parseArr(selected.fotos_internas);
+  const plantas=parseArr(selected.plantas_url);
+
+  const tabs=[
+    {id:'overview',icon:'📋',label:'Visão Geral'},
+    {id:'gallery',icon:'🖼️',label:'Galeria',count:fotosInt.length},
+    {id:'plants',icon:'📐',label:'Plantas',count:plantas.length},
+    {id:'simulador',icon:'💰',label:'Simulador'},
+  ];
+
+  return(
+    <div style={{position:'fixed',top:0,right:0,width:540,height:'100vh',background:'#fff',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* Hero */}
+      <div style={{height:220,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',flexShrink:0,overflow:'hidden'}}>
+        {selected.foto_url
+          ?<img src={selected.foto_url} style={{width:'100%',height:'100%',objectFit:'contain',background:'#0f1e2b'}}/>
+          :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="bld" s={64} c="rgba(255,255,255,0.1)"/></div>}
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:80,background:'linear-gradient(to top,rgba(15,30,43,0.9),transparent)'}}/>
+        <button onClick={onClose} style={{position:'absolute',top:14,right:14,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,width:36,height:36,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <Icon n="x" s={16} c="#fff"/>
+        </button>
+        <div style={{position:'absolute',top:14,left:14}}>
+          <span style={{background:stC[selected.status]||'#888',borderRadius:8,padding:'4px 12px',fontSize:11,color:'#fff',fontWeight:700}}>{selected.status}</span>
+        </div>
+        <div style={{position:'absolute',bottom:14,left:18,right:56}}>
+          {selected.empreendimento&&<div style={{fontSize:11,color:'rgba(200,145,42,0.9)',fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',marginBottom:3}}>{selected.empreendimento}</div>}
+          <div style={{fontSize:17,fontWeight:800,color:'#fff',lineHeight:1.3}}>{selected.titulo}</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:'flex',borderBottom:'2px solid #f1f5f9',background:'#fff',flexShrink:0}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{flex:1,padding:'13px 4px 11px',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,position:'relative',transition:'all .15s'}}>
+            <span style={{fontSize:16}}>{t.icon}</span>
+            <span style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?'#2b9fef':'#94a3b8',letterSpacing:.3}}>{t.label}</span>
+            {t.count>0&&<span style={{position:'absolute',top:8,right:'50%',transform:'translateX(140%)',background:'#2b9fef',color:'#fff',borderRadius:10,fontSize:9,fontWeight:700,padding:'1px 5px'}}>{t.count}</span>}
+            {tab===t.id&&<div style={{position:'absolute',bottom:-2,left:'5%',right:'5%',height:3,background:'linear-gradient(to right,#2b9fef,#f5a6c0)',borderRadius:2}}/>}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{flex:1,overflowY:'auto',padding:'20px 22px'}}>
+
+        {tab==='overview'&&<div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+            <div style={{background:'linear-gradient(135deg,#eff6ff,#dbeafe)',borderRadius:12,padding:'14px 16px',border:'1px solid #bfdbfe'}}>
+              <div style={{fontSize:10,color:'#3b82f6',fontWeight:700,letterSpacing:1,marginBottom:6}}>VENDA</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#1e40af'}}>{selected.preco?fmt(selected.preco):'—'}</div>
+            </div>
+            <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',borderRadius:12,padding:'14px 16px',border:'1px solid #bbf7d0'}}>
+              <div style={{fontSize:10,color:'#16a34a',fontWeight:700,letterSpacing:1,marginBottom:6}}>ALUGUEL/MÊS</div>
+              <div style={{fontSize:20,fontWeight:800,color:'#15803d'}}>{selected.aluguel?fmt(selected.aluguel):'—'}</div>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
+            {[{l:'TIPO',v:selected.tipo},{l:'ÁREA',v:selected.area&&selected.area!='0'?`${selected.area}m²`:'—'},{l:'STATUS',v:selected.status}].map(({l,v})=>(
+              <div key={l} style={{background:'#f8fafc',borderRadius:10,padding:12,border:'1px solid #e2e8f0',textAlign:'center'}}>
+                <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,letterSpacing:1.2,marginBottom:5}}>{l}</div>
+                <div style={{fontSize:13,fontWeight:700,color:'#102136'}}>{v||'—'}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:'#f8fafc',borderRadius:12,padding:'14px 16px',border:'1px solid #e2e8f0',marginBottom:20,display:'flex',alignItems:'flex-start',gap:10}}>
+            <Icon n="pin" s={16} c="#2b9fef"/>
+            <div>
+              <div style={{fontSize:10,color:'#94a3b8',fontWeight:700,letterSpacing:1,marginBottom:3}}>LOCALIZAÇÃO</div>
+              <div style={{fontSize:13,color:'#102136',fontWeight:500}}>{selected.localizacao||'—'}</div>
+            </div>
+          </div>
+          {selected.descricao&&<div style={{marginBottom:20}}>
+            <div style={{fontSize:10,color:'#94a3b8',fontWeight:700,letterSpacing:1,marginBottom:8}}>DESCRIÇÃO</div>
+            <div style={{fontSize:13,color:'#475569',lineHeight:1.8,background:'#f8fafc',borderRadius:10,padding:'12px 14px',border:'1px solid #e2e8f0'}}>{selected.descricao}</div>
+          </div>}
+          <div style={{display:'flex',gap:10,paddingTop:8,borderTop:'1px solid #f1f5f9'}}>
+            <button onClick={onEdit} className="btn btn-secondary" style={{flex:1,justifyContent:'center'}}><Icon n="edit" s={15}/> Editar</button>
+            <button onClick={onDelete} style={{padding:'9px 14px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:600}}><Icon n="trash" s={15} c="#DC2626"/></button>
+          </div>
+        </div>}
+
+        {tab==='gallery'&&<div>
+          {fotosInt.length===0
+            ?<div style={{textAlign:'center',padding:'40px 20px',color:'#94a3b8'}}>
+              <span style={{fontSize:40}}>🖼️</span>
+              <div style={{fontSize:13,marginTop:12}}>Nenhuma imagem interna cadastrada.</div>
+              <button onClick={()=>{onEdit();setTab('overview');}} style={{marginTop:12,padding:'8px 18px',borderRadius:8,background:'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Adicionar fotos</button>
+            </div>
+            :<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              {fotosInt.map((url,i)=>(
+                <div key={i} style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'1px solid #e2e8f0'}} onClick={()=>window.open(url,'_blank')}>
+                  <img src={url} style={{width:'100%',height:140,objectFit:'cover',display:'block'}}/>
+                </div>
+              ))}
+            </div>}
+        </div>}
+
+        {tab==='plants'&&<div>
+          {plantas.length===0
+            ?<div style={{textAlign:'center',padding:'40px 20px',color:'#94a3b8'}}>
+              <span style={{fontSize:40}}>📐</span>
+              <div style={{fontSize:13,marginTop:12}}>Nenhuma planta cadastrada.</div>
+              <button onClick={onEdit} style={{marginTop:12,padding:'8px 18px',borderRadius:8,background:'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Adicionar plantas</button>
+            </div>
+            :<div style={{display:'flex',flexDirection:'column',gap:14}}>
+              {plantas.map((url,i)=>(
+                <div key={i} style={{borderRadius:12,overflow:'hidden',border:'1px solid #e2e8f0',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}} onClick={()=>window.open(url,'_blank')}>
+                  <img src={url} style={{width:'100%',display:'block'}}/>
+                  <div style={{padding:'8px 12px',background:'#f8fafc',fontSize:12,color:'#64748b',fontWeight:500}}>Planta {i+1} — Clique para ampliar</div>
+                </div>
+              ))}
+            </div>}
+        </div>}
+
+        {tab==='simulador'&&<div style={{textAlign:'center',padding:'40px 20px'}}>
+          <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#eff6ff,#dbeafe)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',border:'1px solid #bfdbfe'}}>
+            <span style={{fontSize:32}}>💰</span>
+          </div>
+          <div style={{fontSize:16,fontWeight:700,color:'#102136',marginBottom:8}}>Simulador de Financiamento</div>
+          <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.7,marginBottom:24}}>O simulador será implementado em breve.<br/>Aqui você poderá simular financiamentos<br/>para cada unidade deste empreendimento.</div>
+          <div style={{background:'linear-gradient(135deg,#f0f9ff,#e0f2fe)',borderRadius:12,padding:'14px 18px',border:'1px dashed #2b9fef',fontSize:12,color:'#2b9fef',fontWeight:600}}>🚀 Em desenvolvimento</div>
+        </div>}
+
+      </div>
+    </div>
+  );
+}
+
 function Imoveis({imoveis,setImoveis,user}){
   const [modal,setModal]=useState(null);
   const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
-  const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
   const [uploadingFoto,setUploadingFoto]=useState(false);
-  const [activeTab,setActiveTab]=useState('overview');
+  const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível',empreendimento:'',foto_url:null,fotos_internas:null,plantas_url:null});
+
+  const parseArr=(val)=>{
+    if(!val)return[];
+    if(Array.isArray(val))return val;
+    try{const p=JSON.parse(val);return Array.isArray(p)?p:[p];}catch(e){return[val];}
+  };
 
   const handleFotoUpload=async(file,key='foto_url')=>{
     setUploadingFoto(key);
@@ -517,14 +661,20 @@ function Imoveis({imoveis,setImoveis,user}){
     }
     setUploadingFoto(false);
   };
-  const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
 
   const saveImovel=async(data)=>{
+    const saveData={
+      ...data,
+      captador_id:data.id?data.captador_id:user.id,
+      fotos_internas:data.fotos_internas?JSON.stringify(Array.isArray(data.fotos_internas)?data.fotos_internas:[data.fotos_internas]):null,
+      plantas_url:data.plantas_url?JSON.stringify(Array.isArray(data.plantas_url)?data.plantas_url:[data.plantas_url]):null,
+      preco:Number(data.preco)||0,
+      aluguel:Number(data.aluguel)||0,
+    };
     if(data.id){
-      const {data:d}=await db.from('imoveis').update(data).eq('id',data.id).select().single();
-      if(d)setImoveis(imoveis.map(i=>i.id===d.id?d:i));
+      const {data:d}=await db.from('imoveis').update(saveData).eq('id',data.id).select().single();
+      if(d){setImoveis(imoveis.map(i=>i.id===d.id?d:i));setSelected(d);}
     }else{
-      const saveData={...data,captador_id:user.id,fotos_internas:data.fotos_internas?JSON.stringify(data.fotos_internas):null,plantas_url:data.plantas_url?JSON.stringify(data.plantas_url):null};
       const {data:d}=await db.from('imoveis').insert(saveData).select().single();
       if(d)setImoveis([...imoveis,d]);
     }
@@ -535,14 +685,20 @@ function Imoveis({imoveis,setImoveis,user}){
     if(!confirm('Excluir este imóvel?'))return;
     await db.from('imoveis').delete().eq('id',id);
     setImoveis(imoveis.filter(i=>i.id!==id));
-    if(selected?.id===id)setSelected(null);
+    setSelected(null);
+  };
+
+  const openEdit=(im)=>{
+    setEditImovel(im);
+    setFormData({...im,fotos_internas:parseArr(im.fotos_internas),plantas_url:parseArr(im.plantas_url)});
+    setModal('form');
   };
 
   return(
     <div className="fade" style={{position:'relative'}}>
       <div className="page-header">
         <h1 className="page-title">Imóveis</h1>
-        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});setModal('form');}}>
+        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível',empreendimento:'',foto_url:null,fotos_internas:null,plantas_url:null});setEditImovel(null);setModal('form');}}>
           <Icon n="plus" s={18}/> Captar Imóvel
         </button>
       </div>
@@ -559,40 +715,38 @@ function Imoveis({imoveis,setImoveis,user}){
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
               {grupo.map(im=>(
-          <div key={im.id} onClick={()=>{setSelected(im);setActiveTab('overview');}}
-            style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected?.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s',transform:selected?.id===im.id?'scale(1.02)':'scale(1)'}}>
-            {/* Vertical image */}
-            <div style={{height:280,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
-              {im.foto_url
-                ?<img src={im.foto_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt={im.titulo}/>
-                :<div style={{textAlign:'center',padding:20}}>
-                  <Icon n="bld" s={48} c="rgba(255,255,255,0.15)"/>
-                  <div style={{fontSize:11,color:'rgba(255,255,255,0.3)',marginTop:8}}>Sem foto</div>
-                </div>}
-              <div style={{position:'absolute',top:10,left:10,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.tipo}</div>
-              <div style={{position:'absolute',top:10,right:10}}>
-                <span style={{background:`${stC[im.status]||'#888'}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.status}</span>
-              </div>
-            </div>
-            {/* Info */}
-            <div style={{padding:'14px 16px'}}>
-              <div style={{fontSize:14,fontWeight:700,color:'#102136',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.titulo}</div>
-              <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:10}}>
-                <Icon n="pin" s={12} c="#94a3b8"/>
-                <span style={{fontSize:12,color:'#94a3b8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.localizacao}</span>
-              </div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div>
-                  <div style={{fontSize:10,color:'#94a3b8'}}>Venda</div>
-                  <div style={{fontSize:14,fontWeight:700,color:'#2b9fef'}}>{im.preco?fmt(im.preco):'—'}</div>
+                <div key={im.id} onClick={()=>setSelected(im)}
+                  style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected?.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s',transform:selected?.id===im.id?'scale(1.02)':'scale(1)'}}>
+                  <div style={{height:280,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+                    {im.foto_url
+                      ?<img src={im.foto_url} style={{width:'100%',height:'100%',objectFit:'contain',background:'#0f1e2b',padding:'8px'}} alt={im.titulo}/>
+                      :<div style={{textAlign:'center',padding:20}}>
+                        <Icon n="bld" s={48} c="rgba(255,255,255,0.15)"/>
+                        <div style={{fontSize:11,color:'rgba(255,255,255,0.3)',marginTop:8}}>Sem foto</div>
+                      </div>}
+                    <div style={{position:'absolute',top:10,left:10,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.tipo}</div>
+                    <div style={{position:'absolute',top:10,right:10}}>
+                      <span style={{background:`${({Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'}[im.status]||'#888')}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.status}</span>
+                    </div>
+                  </div>
+                  <div style={{padding:'14px 16px'}}>
+                    <div style={{fontSize:14,fontWeight:700,color:'#102136',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.titulo}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:10}}>
+                      <Icon n="pin" s={12} c="#94a3b8"/>
+                      <span style={{fontSize:12,color:'#94a3b8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.localizacao}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontSize:10,color:'#94a3b8'}}>Venda</div>
+                        <div style={{fontSize:14,fontWeight:700,color:'#2b9fef'}}>{im.preco?fmt(im.preco):'—'}</div>
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontSize:10,color:'#94a3b8'}}>Área</div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#102136'}}>{im.area&&im.area!='0'?`${im.area}m²`:'—'}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:10,color:'#94a3b8'}}>Área</div>
-                  <div style={{fontSize:13,fontWeight:600,color:'#102136'}}>{im.area||'—'}{im.area&&im.area!='0'&&im.area!='0'?'m²':''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
               ))}
             </div>
           </div>
@@ -605,169 +759,16 @@ function Imoveis({imoveis,setImoveis,user}){
         </div>
       )}
 
-      {/* Slide-in Detail Panel */}
-      <div style={{position:'fixed',top:0,right:selected?0:'-560px',width:540,height:'100vh',background:'#fff',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',zIndex:500,transition:'right .35s cubic-bezier(.4,0,.2,1)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        {selected&&(()=>{
-          const tab=activeTab;
-          const setTab=setActiveTab;
-          let fotosInt=[];try{fotosInt=selected.fotos_internas?JSON.parse(selected.fotos_internas):[];}catch(e){fotosInt=selected.fotos_internas?[selected.fotos_internas]:[];}
-          let plantas=[];try{plantas=selected.plantas_url?JSON.parse(selected.plantas_url):[];}catch(e){plantas=selected.plantas_url?[selected.plantas_url]:[];}
-          const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
-          const tabs=[
-            {id:'overview',icon:'📋',label:'Visão Geral'},
-            {id:'gallery',icon:'🖼️',label:'Galeria',count:fotosInt.length},
-            {id:'plants',icon:'📐',label:'Plantas',count:plantas.length},
-            {id:'simulator',icon:'💰',label:'Simulador'},
-          ];
-          return(<>
-            {/* Hero Image */}
-            <div style={{height:220,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',flexShrink:0,overflow:'hidden'}}>
-              {selected.foto_url
-                ?<img src={selected.foto_url} style={{width:'100%',height:'100%',objectFit:'contain',background:'#0f1e2b'}}/>
-                :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon n="bld" s={64} c="rgba(255,255,255,0.1)"/></div>}
-              {/* Gradient overlay bottom */}
-              <div style={{position:'absolute',bottom:0,left:0,right:0,height:80,background:'linear-gradient(to top,rgba(15,30,43,0.9),transparent)'}}/>
-              {/* Close btn */}
-              <button onClick={()=>setSelected(null)} style={{position:'absolute',top:14,right:14,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:10,width:36,height:36,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <Icon n="x" s={16} c="#fff"/>
-              </button>
-              {/* Status badge */}
-              <div style={{position:'absolute',top:14,left:14}}>
-                <span style={{background:`${stC[selected.status]||'#888'}`,borderRadius:8,padding:'4px 12px',fontSize:11,color:'#fff',fontWeight:700,boxShadow:'0 2px 8px rgba(0,0,0,0.2)'}}>{selected.status}</span>
-              </div>
-              {/* Title over image */}
-              <div style={{position:'absolute',bottom:14,left:18,right:18}}>
-                {selected.empreendimento&&<div style={{fontSize:11,color:'rgba(200,145,42,0.9)',fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',marginBottom:3}}>{selected.empreendimento}</div>}
-                <div style={{fontSize:17,fontWeight:800,color:'#fff',lineHeight:1.3}}>{selected.titulo}</div>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div style={{display:'flex',borderBottom:'1px solid #f1f5f9',background:'#fff',flexShrink:0}}>
-              {tabs.map(t=>(
-                <button key={t.id} onClick={()=>setTab(t.id)}
-                  style={{flex:1,padding:'14px 4px',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,position:'relative',transition:'all .15s'}}>
-                  <span style={{fontSize:16}}>{t.icon}</span>
-                  <span style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?'#2b9fef':'#94a3b8',letterSpacing:.3}}>{t.label}</span>
-                  {t.count>0&&<span style={{position:'absolute',top:8,right:'50%',transform:'translateX(140%)',background:'#2b9fef',color:'#fff',borderRadius:10,fontSize:9,fontWeight:700,padding:'1px 5px',minWidth:14,textAlign:'center'}}>{t.count}</span>}
-                  {tab===t.id&&<div style={{position:'absolute',bottom:0,left:'10%',right:'10%',height:2.5,background:'linear-gradient(to right,#2b9fef,#f5a6c0)',borderRadius:2}}/>}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <div style={{flex:1,overflowY:'auto',padding:'20px 22px'}}>
-
-              {/* OVERVIEW TAB */}
-              {tab==='overview'&&<div>
-                {/* Price cards */}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
-                  <div style={{background:'linear-gradient(135deg,#eff6ff,#dbeafe)',borderRadius:12,padding:'14px 16px',border:'1px solid #bfdbfe'}}>
-                    <div style={{fontSize:10,color:'#3b82f6',fontWeight:700,letterSpacing:1,marginBottom:6}}>VENDA</div>
-                    <div style={{fontSize:20,fontWeight:800,color:'#1e40af'}}>{selected.preco?fmt(selected.preco):'—'}</div>
-                  </div>
-                  <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',borderRadius:12,padding:'14px 16px',border:'1px solid #bbf7d0'}}>
-                    <div style={{fontSize:10,color:'#16a34a',fontWeight:700,letterSpacing:1,marginBottom:6}}>ALUGUEL/MÊS</div>
-                    <div style={{fontSize:20,fontWeight:800,color:'#15803d'}}>{selected.aluguel?fmt(selected.aluguel):'—'}</div>
-                  </div>
-                </div>
-
-                {/* Details grid */}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
-                  {[
-                    {l:'TIPO',v:selected.tipo},
-                    {l:'ÁREA',v:selected.area&&selected.area!='0'?`${selected.area}m²`:'—'},
-                    {l:'STATUS',v:selected.status},
-                  ].map(({l,v})=>(
-                    <div key={l} style={{background:'#f8fafc',borderRadius:10,padding:'12px',border:'1px solid #e2e8f0',textAlign:'center'}}>
-                      <div style={{fontSize:9,color:'#94a3b8',fontWeight:700,letterSpacing:1.2,marginBottom:5}}>{l}</div>
-                      <div style={{fontSize:13,fontWeight:700,color:'#102136'}}>{v||'—'}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Location */}
-                <div style={{background:'#f8fafc',borderRadius:12,padding:'14px 16px',border:'1px solid #e2e8f0',marginBottom:20,display:'flex',alignItems:'flex-start',gap:10}}>
-                  <Icon n="pin" s={16} c="#2b9fef"/>
-                  <div>
-                    <div style={{fontSize:10,color:'#94a3b8',fontWeight:700,letterSpacing:1,marginBottom:3}}>LOCALIZAÇÃO</div>
-                    <div style={{fontSize:13,color:'#102136',fontWeight:500}}>{selected.localizacao||'—'}</div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                {selected.descricao&&<div style={{marginBottom:20}}>
-                  <div style={{fontSize:10,color:'#94a3b8',fontWeight:700,letterSpacing:1,marginBottom:8}}>DESCRIÇÃO</div>
-                  <div style={{fontSize:13,color:'#475569',lineHeight:1.8,background:'#f8fafc',borderRadius:10,padding:'12px 14px',border:'1px solid #e2e8f0'}}>{selected.descricao}</div>
-                </div>}
-
-                {/* Actions */}
-                <div style={{display:'flex',gap:10,paddingTop:8,borderTop:'1px solid #f1f5f9'}}>
-                  <button onClick={()=>{setEditImovel(selected);setFormData({...selected,fotos_internas:fotosInt,plantas_url:plantas});setModal('form');}} className="btn btn-secondary" style={{flex:1,justifyContent:'center'}}>
-                    <Icon n="edit" s={15}/> Editar
-                  </button>
-                  <button onClick={()=>deleteImovel(selected.id)} style={{padding:'9px 14px',borderRadius:8,background:'#FEF2F2',border:'1px solid #FECACA',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:600}}>
-                    <Icon n="trash" s={15} c="#DC2626"/>
-                  </button>
-                </div>
-              </div>}
-
-              {/* GALLERY TAB */}
-              {tab==='gallery'&&<div>
-                {fotosInt.length===0
-                  ?<div style={{textAlign:'center',padding:'40px 20px',color:'#94a3b8'}}>
-                    <span style={{fontSize:40}}>🖼️</span>
-                    <div style={{fontSize:13,marginTop:12}}>Nenhuma imagem interna cadastrada.</div>
-                    <button onClick={()=>{setEditImovel(selected);setFormData({...selected,fotos_internas:fotosInt,plantas_url:plantas});setModal('form');setTab('overview');}} style={{marginTop:12,padding:'8px 18px',borderRadius:8,background:'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Adicionar fotos</button>
-                  </div>
-                  :<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                    {fotosInt.map((url,i)=>(
-                      <div key={i} style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'1px solid #e2e8f0'}} onClick={()=>window.open(url,'_blank')}>
-                        <img src={url} style={{width:'100%',height:140,objectFit:'cover',display:'block',transition:'transform .2s'}}
-                          onMouseOver={e=>e.target.style.transform='scale(1.05)'}
-                          onMouseOut={e=>e.target.style.transform='scale(1)'}/>
-                      </div>
-                    ))}
-                  </div>}
-              </div>}
-
-              {/* PLANTS TAB */}
-              {tab==='plants'&&<div>
-                {plantas.length===0
-                  ?<div style={{textAlign:'center',padding:'40px 20px',color:'#94a3b8'}}>
-                    <span style={{fontSize:40}}>📐</span>
-                    <div style={{fontSize:13,marginTop:12}}>Nenhuma planta cadastrada.</div>
-                    <button onClick={()=>{setEditImovel(selected);setFormData({...selected,fotos_internas:fotosInt,plantas_url:plantas});setModal('form');}} style={{marginTop:12,padding:'8px 18px',borderRadius:8,background:'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer'}}>Adicionar plantas</button>
-                  </div>
-                  :<div style={{display:'flex',flexDirection:'column',gap:14}}>
-                    {plantas.map((url,i)=>(
-                      <div key={i} style={{borderRadius:12,overflow:'hidden',border:'1px solid #e2e8f0',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}} onClick={()=>window.open(url,'_blank')}>
-                        <img src={url} style={{width:'100%',display:'block'}}/>
-                        <div style={{padding:'8px 12px',background:'#f8fafc',fontSize:12,color:'#64748b',fontWeight:500}}>Planta {i+1} — Clique para ampliar</div>
-                      </div>
-                    ))}
-                  </div>}
-              </div>}
-
-              {/* SIMULATOR TAB */}
-              {tab==='simulator'&&<div style={{textAlign:'center',padding:'40px 20px'}}>
-                <div style={{width:72,height:72,borderRadius:20,background:'linear-gradient(135deg,#eff6ff,#dbeafe)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',border:'1px solid #bfdbfe'}}>
-                  <span style={{fontSize:32}}>💰</span>
-                </div>
-                <div style={{fontSize:16,fontWeight:700,color:'#102136',marginBottom:8}}>Simulador de Financiamento</div>
-                <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.7,marginBottom:24}}>O simulador será implementado em breve.<br/>Aqui você poderá simular financiamentos<br/>para cada unidade deste empreendimento.</div>
-                <div style={{background:'linear-gradient(135deg,#f0f9ff,#e0f2fe)',borderRadius:12,padding:'14px 18px',border:'1px dashed #2b9fef',fontSize:12,color:'#2b9fef',fontWeight:600}}>
-                  🚀 Em desenvolvimento
-                </div>
-              </div>}
-
-            </div>
-          </>);
-        })()}
-      </div>
-
-      {/* Overlay */}
-      {selected&&<div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.2)',zIndex:499}}/>}
+      {/* Detail Panel */}
+      {selected&&<>
+        <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.2)',zIndex:499}}/>
+        <DetailPanel
+          selected={selected}
+          onClose={()=>setSelected(null)}
+          onEdit={()=>openEdit(selected)}
+          onDelete={()=>deleteImovel(selected.id)}
+        />
+      </>}
 
       {/* Form Modal */}
       {modal==='form'&&(
@@ -778,32 +779,32 @@ function Imoveis({imoveis,setImoveis,user}){
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8'}}><Icon n="x" s={20}/></button>
             </div>
             <div className="form-group"><label className="form-label">Empreendimento *</label><input className="form-input" placeholder="Ex: Villagio Di Trapani" value={formData.empreendimento||''} onChange={e=>setFormData({...formData,empreendimento:e.target.value})}/></div>
-            <div className="form-group"><label className="form-label">Tipologia / Título *</label><input className="form-input" placeholder="Ex: Studio, Apartamento Padrão, Cobertura" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Tipologia / Título *</label><input className="form-input" placeholder="Ex: Studio, Apartamento Padrão, Cobertura" value={formData.titulo||''} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
               <div className="form-group"><label className="form-label">Tipo</label>
-                <select className="form-input" value={formData.tipo} onChange={e=>setFormData({...formData,tipo:e.target.value})}>
+                <select className="form-input" value={formData.tipo||'Residencial'} onChange={e=>setFormData({...formData,tipo:e.target.value})}>
                   {['Residencial','Studio','Sala','Loja','Galpão','Conjunto','Escritório','Ponto Comercial','Outro'].map(t=><option key={t}>{t}</option>)}
                 </select>
               </div>
               <div className="form-group"><label className="form-label">Status</label>
-                <select className="form-input" value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})}>
+                <select className="form-input" value={formData.status||'Disponível'} onChange={e=>setFormData({...formData,status:e.target.value})}>
                   {['Disponível','Reservado','Negociando','Vendido'].map(s=><option key={s}>{s}</option>)}
                 </select>
               </div>
             </div>
-            <div className="form-group"><label className="form-label">Localização</label><input className="form-input" value={formData.localizacao} onChange={e=>setFormData({...formData,localizacao:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Localização</label><input className="form-input" value={formData.localizacao||''} onChange={e=>setFormData({...formData,localizacao:e.target.value})}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
               <div className="form-group"><label className="form-label">Área (m²)</label><input className="form-input" type="text" placeholder="Ex: 58,85 - 85,60" value={formData.area||''} onChange={e=>setFormData({...formData,area:e.target.value})}/></div>
-              <div className="form-group"><label className="form-label">Venda (R$)</label><input className="form-input" type="number" value={formData.preco} onChange={e=>setFormData({...formData,preco:e.target.value})}/></div>
-              <div className="form-group"><label className="form-label">Aluguel/mês</label><input className="form-input" type="number" value={formData.aluguel} onChange={e=>setFormData({...formData,aluguel:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Venda (R$)</label><input className="form-input" type="number" value={formData.preco||''} onChange={e=>setFormData({...formData,preco:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Aluguel/mês</label><input className="form-input" type="number" value={formData.aluguel||''} onChange={e=>setFormData({...formData,aluguel:e.target.value})}/></div>
             </div>
             <div className="form-group">
               <label className="form-label">Imagens do Imóvel</label>
               <div style={{display:'flex',flexDirection:'column',gap:12}}>
                 {[
-                  {key:'foto_url',label:'📸 Foto de Capa',desc:'Imagem principal do card na galeria',id:'upload-capa'},
-                  {key:'fotos_internas',label:'🏠 Imagens Internas',desc:'Fotos dos ambientes internos (múltiplas)',id:'upload-internas',multi:true},
-                  {key:'plantas_url',label:'📐 Plantas',desc:'Plantas baixas e implantação (múltiplas)',id:'upload-plantas',multi:true}
+                  {key:'foto_url',label:'📸 Foto de Capa',desc:'Imagem principal do card na galeria',id:'upload-capa',multi:false},
+                  {key:'fotos_internas',label:'🏠 Imagens Internas',desc:'Fotos dos ambientes internos',id:'upload-internas',multi:true},
+                  {key:'plantas_url',label:'📐 Plantas',desc:'Plantas baixas e implantação',id:'upload-plantas',multi:true}
                 ].map(({key,label,desc,id,multi})=>(
                   <div key={key} style={{border:'2px dashed #e2e8f0',borderRadius:10,padding:14,background:'#f8fafc'}}>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -812,40 +813,36 @@ function Imoveis({imoveis,setImoveis,user}){
                         <div style={{fontSize:11,color:'#94a3b8'}}>{desc}</div>
                       </div>
                       <button type="button" onClick={()=>document.getElementById(id).click()}
-                        style={{padding:'6px 14px',borderRadius:7,background:'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                        style={{padding:'6px 14px',borderRadius:7,background:uploadingFoto===key?'#94a3b8':'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
                         {uploadingFoto===key?'Enviando...':'Escolher'}
                       </button>
                     </div>
-                    {formData[key]&&(
-                      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
-                        {(Array.isArray(formData[key])?formData[key]:[formData[key]]).map((url,i)=>(
-                          <div key={i} style={{position:'relative'}}>
-                            <img src={url} style={{width:64,height:64,objectFit:'cover',borderRadius:6,border:'1px solid #e2e8f0'}}/>
-                            <div onClick={()=>{
-                              if(Array.isArray(formData[key])){
-                                const arr=formData[key].filter((_,j)=>j!==i);
-                                setFormData(f=>({...f,[key]:arr.length?arr:null}));
-                              }else{
-                                setFormData(f=>({...f,[key]:null}));
-                              }
-                            }} style={{position:'absolute',top:-4,right:-4,width:16,height:16,borderRadius:'50%',background:'#EF4444',color:'#fff',fontSize:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:700}}>×</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <input id={id} type="file" accept="image/*" multiple={!!multi} style={{display:'none'}}
-                      onChange={async e=>{
-                        const files=Array.from(e.target.files);
-                        for(const file of files){await handleFotoUpload(file,key);}
-                      }}/>
+                    {(()=>{
+                      const imgs=key==='foto_url'?(formData[key]?[formData[key]]:[]):(Array.isArray(formData[key])?formData[key]:formData[key]?[formData[key]]:[]);
+                      return imgs.length>0&&(
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
+                          {imgs.map((url,i)=>(
+                            <div key={i} style={{position:'relative'}}>
+                              <img src={url} style={{width:64,height:64,objectFit:'cover',borderRadius:6,border:'1px solid #e2e8f0'}}/>
+                              <div onClick={()=>{
+                                if(key==='foto_url'){setFormData(f=>({...f,foto_url:null}));}
+                                else{const arr=(Array.isArray(formData[key])?formData[key]:[]).filter((_,j)=>j!==i);setFormData(f=>({...f,[key]:arr.length?arr:null}));}
+                              }} style={{position:'absolute',top:-4,right:-4,width:18,height:18,borderRadius:'50%',background:'#EF4444',color:'#fff',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:700}}>×</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    <input id={id} type="file" accept="image/*" multiple={multi} style={{display:'none'}}
+                      onChange={async e=>{const files=Array.from(e.target.files);for(const file of files){await handleFotoUpload(file,key);}}}/>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-input" rows={3} value={formData.descricao} onChange={e=>setFormData({...formData,descricao:e.target.value})} style={{resize:'vertical'}}/></div>
+            <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-input" rows={3} value={formData.descricao||''} onChange={e=>setFormData({...formData,descricao:e.target.value})} style={{resize:'vertical'}}/></div>
             <div style={{display:'flex',gap:12,marginTop:8}}>
-              <button className="btn btn-secondary" onClick={()=>setModal(null)} style={{flex:1,justifyContent:'center'}}>Cancelar</button>
-              <button className="btn btn-primary" onClick={()=>saveImovel({...formData,preco:Number(formData.preco)||0,aluguel:Number(formData.aluguel)||0,area:Number(formData.area)||0,...(editImovel?{id:editImovel.id}:{})})} style={{flex:2,justifyContent:'center'}}>
+              <button className="btn btn-secondary" onClick={()=>{setModal(null);setEditImovel(null);}} style={{flex:1,justifyContent:'center'}}>Cancelar</button>
+              <button className="btn btn-primary" onClick={()=>saveImovel({...formData,...(editImovel?{id:editImovel.id,captador_id:editImovel.captador_id}:{})})} style={{flex:2,justifyContent:'center'}}>
                 {editImovel?'Salvar':'Registrar Imóvel'}
               </button>
             </div>
@@ -855,7 +852,6 @@ function Imoveis({imoveis,setImoveis,user}){
     </div>
   );
 }
-
 // ── Agenda ──
 function Agenda({visitas,leads,imoveis,user}){
   const myVisits=user.is_admin?visitas:visitas.filter(v=>v.corretor_id===user.id);

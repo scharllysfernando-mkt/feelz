@@ -497,6 +497,7 @@ function Imoveis({imoveis,setImoveis,user}){
   const [editImovel,setEditImovel]=useState(null);
   const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
   const [uploadingFoto,setUploadingFoto]=useState(false);
+  const [activeTab,setActiveTab]=useState('overview');
 
   const handleFotoUpload=async(file,key='foto_url')=>{
     setUploadingFoto(key);
@@ -558,7 +559,7 @@ function Imoveis({imoveis,setImoveis,user}){
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
               {grupo.map(im=>(
-          <div key={im.id} onClick={()=>setSelected(im)}
+          <div key={im.id} onClick={()=>{setSelected(im);setActiveTab('overview');}}
             style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected?.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s',transform:selected?.id===im.id?'scale(1.02)':'scale(1)'}}>
             {/* Vertical image */}
             <div style={{height:280,background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
@@ -607,7 +608,8 @@ function Imoveis({imoveis,setImoveis,user}){
       {/* Slide-in Detail Panel */}
       <div style={{position:'fixed',top:0,right:selected?0:'-560px',width:540,height:'100vh',background:'#fff',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',zIndex:500,transition:'right .35s cubic-bezier(.4,0,.2,1)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
         {selected&&(()=>{
-          const [tab,setTab]=React.useState('overview');
+          const tab=activeTab;
+          const setTab=setActiveTab;
           let fotosInt=[];try{fotosInt=selected.fotos_internas?JSON.parse(selected.fotos_internas):[];}catch(e){fotosInt=selected.fotos_internas?[selected.fotos_internas]:[];}
           let plantas=[];try{plantas=selected.plantas_url?JSON.parse(selected.plantas_url):[];}catch(e){plantas=selected.plantas_url?[selected.plantas_url]:[];}
           const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};

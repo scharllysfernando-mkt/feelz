@@ -495,7 +495,7 @@ function Imoveis({imoveis,setImoveis,user}){
   const [modal,setModal]=useState(null);
   const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
-  const [formData,setFormData]=useState({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
+  const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});
   const [uploadingFoto,setUploadingFoto]=useState(false);
 
   const handleFotoUpload=async(file,key='foto_url')=>{
@@ -541,7 +541,7 @@ function Imoveis({imoveis,setImoveis,user}){
     <div className="fade" style={{position:'relative'}}>
       <div className="page-header">
         <h1 className="page-title">Imóveis</h1>
-        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Sala',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});setModal('form');}}>
+        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível'});setModal('form');}}>
           <Icon n="plus" s={18}/> Captar Imóvel
         </button>
       </div>
@@ -690,11 +690,11 @@ function Imoveis({imoveis,setImoveis,user}){
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8'}}><Icon n="x" s={20}/></button>
             </div>
             <div className="form-group"><label className="form-label">Empreendimento *</label><input className="form-input" placeholder="Ex: Villagio Di Trapani" value={formData.empreendimento||''} onChange={e=>setFormData({...formData,empreendimento:e.target.value})}/></div>
-            <div className="form-group"><label className="form-label">Tipologia / Título *</label><input className="form-input" placeholder="Ex: Studio 42m², 2 Quartos 67m²" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Tipologia / Título *</label><input className="form-input" placeholder="Ex: Studio, Apartamento Padrão, Cobertura" value={formData.titulo} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
               <div className="form-group"><label className="form-label">Tipo</label>
                 <select className="form-input" value={formData.tipo} onChange={e=>setFormData({...formData,tipo:e.target.value})}>
-                  {['Sala','Loja','Galpão','Conjunto','Escritório','Ponto Comercial','Outro'].map(t=><option key={t}>{t}</option>)}
+                  {['Residencial','Studio','Sala','Loja','Galpão','Conjunto','Escritório','Ponto Comercial','Outro'].map(t=><option key={t}>{t}</option>)}
                 </select>
               </div>
               <div className="form-group"><label className="form-label">Status</label>

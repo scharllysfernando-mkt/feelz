@@ -632,113 +632,66 @@ function DetailPanel({selected,onClose,onEdit,onDelete}){
             </div>}
         </div>}
 
-        {/* PLANTAS */}
-        {tab==='plants'&&<div style={{padding:'16px 20px'}}>
-          {plantas.length===0
-            ?<div style={{textAlign:'center',padding:'48px 20px',color:'#9aa0a6'}}>
-              <div style={{fontSize:32,marginBottom:12}}>📐</div>
-              <div style={{fontSize:14,marginBottom:4,color:'#5f6368',fontWeight:500}}>Sem plantas cadastradas</div>
-              <div style={{fontSize:13,marginBottom:16}}>Adicione as plantas do imóvel.</div>
-              <button onClick={onEdit} style={{padding:'8px 20px',borderRadius:6,background:'#1a73e8',border:'none',color:'#fff',fontSize:13,fontWeight:500,cursor:'pointer'}}>Adicionar plantas</button>
+                {/* PLANTAS */}
+        {tab==='plants'&&(()=>{
+          const tipos=Array.from({length:10},(_,i)=>`Tipo ${String(i+1).padStart(2,'0')}`);
+
+          // Parse plants - support both old array format and new object format
+          let plantasObj={};
+          try{
+            const raw=selected.plantas_url;
+            if(!raw){plantasObj={};}
+            else if(typeof raw==='object'&&!Array.isArray(raw)){plantasObj=raw;}
+            else{
+              const parsed=JSON.parse(raw);
+              if(Array.isArray(parsed)){
+                // Old format: convert array to object
+                parsed.forEach((url,i)=>{if(url)plantasObj[`Tipo ${String(i+1).padStart(2,'0')}`]=url;});
+              }else if(typeof parsed==='object'){
+                plantasObj=parsed;
+              }
+            }
+          }catch(e){plantasObj={};}
+
+          const allUrls=Object.values(plantasObj).filter(Boolean);
+          const hasAny=allUrls.length>0;
+
+          return(
+            <div style={{padding:'16px 20px'}}>
+              <div style={{fontSize:11,color:'#9aa0a6',fontWeight:600,textTransform:'uppercase',letterSpacing:.8,marginBottom:14}}>
+                Plantas por Tipologia {hasAny&&<span style={{color:'#1a73e8'}}>({allUrls.length} cadastrada{allUrls.length>1?'s':''})</span>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {tipos.map(tipo=>{
+                  const url=plantasObj[tipo];
+                  return(
+                    <div key={tipo} style={{border:'1px solid #e8eaed',borderRadius:10,overflow:'hidden',background:url?'#fff':'#f8f9fa'}}>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:url?'1px solid #e8eaed':'none'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{fontSize:13,fontWeight:700,color:'#202124'}}>{tipo}</span>
+                          {url
+                            ?<span style={{fontSize:10,color:'#34a853',fontWeight:600,background:'#e6f4ea',borderRadius:4,padding:'1px 7px'}}>✓ Cadastrada</span>
+                            :<span style={{fontSize:10,color:'#9aa0a6',background:'#f1f3f4',borderRadius:4,padding:'1px 7px'}}>Sem planta</span>}
+                        </div>
+                        <button onClick={onEdit} style={{padding:'4px 10px',borderRadius:6,background:'none',border:'1px solid #e8eaed',color:'#5f6368',fontSize:11,cursor:'pointer',fontWeight:500}}>
+                          {url?'Trocar':'Adicionar'}
+                        </button>
+                      </div>
+                      {url&&(
+                        <div style={{cursor:'pointer'}} onClick={()=>setLightbox({url,urls:allUrls})}>
+                          <img src={url} style={{width:'100%',maxHeight:200,objectFit:'contain',background:'#f8f9fa',display:'block'}} loading="lazy"/>
+                          <div style={{padding:'6px 14px',background:'#f8f9fa',fontSize:11,color:'#9aa0a6',display:'flex',alignItems:'center',gap:5}}>
+                            <Icon n="search" s={11} c="#9aa0a6"/> Clique para ampliar
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            :<div style={{display:'flex',flexDirection:'column',gap:12}}>
-              {plantas.map((url,i)=>(
-                <div key={i} style={{borderRadius:8,overflow:'hidden',border:'1px solid #e8eaed',cursor:'pointer'}} onClick={()=>setLightbox({url,urls:plantas})}>
-                  <img src={url} style={{width:'100%',display:'block'}} loading='lazy'/>
-                  <div style={{padding:'8px 12px',background:'#f8f9fa',fontSize:12,color:'#5f6368',display:'flex',alignItems:'center',gap:6}}>
-                    <Icon n="search" s={12} c="#9aa0a6"/> Planta {i+1} — clique para ampliar
-                  </div>
-                </div>
-              ))}
-            </div>}
-        </div>}
-
-        {/* SIMULADOR */}
-        {tab==='simulador'&&<div style={{padding:'20px'}}>
-          <div style={{border:'1px solid #e8eaed',borderRadius:10,padding:'32px 24px',textAlign:'center',background:'#f8f9fa'}}>
-            <div style={{fontSize:28,marginBottom:12}}>💰</div>
-            <div style={{fontSize:15,fontWeight:600,color:'#202124',marginBottom:6}}>Simulador de Financiamento</div>
-            <div style={{fontSize:13,color:'#9aa0a6',lineHeight:1.7}}>Em desenvolvimento.<br/>Em breve você poderá simular<br/>financiamentos por unidade.</div>
-          </div>
-        </div>}
-
-      </div>
-    {lightbox&&<Lightbox url={typeof lightbox==='object'?lightbox.url:lightbox} urls={typeof lightbox==='object'?lightbox.urls:[]} onClose={()=>setLightbox(null)}/>}
-    </div>
-  );
-}
-
-function Imoveis({imoveis,setImoveis,user}){
-  const [modal,setModal]=useState(null);
-  const [selected,setSelected]=useState(null);
-  const [editImovel,setEditImovel]=useState(null);
-  const [uploadingFoto,setUploadingFoto]=useState(false);
-  const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível',empreendimento:'',foto_url:null,fotos_internas:null,plantas_url:null});
-
-  const parseArr=(val)=>{
-    if(!val)return[];
-    if(Array.isArray(val))return val;
-    try{const p=JSON.parse(val);return Array.isArray(p)?p:[p];}catch(e){return[val];}
-  };
-
-  const handleFotoUpload=async(file,key='foto_url')=>{
-    setUploadingFoto(key);
-    const ext=file.name.split('.').pop();
-    const fileName=`imovel_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const {data,error}=await db.storage.from('imoveis').upload(fileName,file,{upsert:true});
-    if(!error){
-      const {data:url}=db.storage.from('imoveis').getPublicUrl(fileName);
-      const publicUrl=url.publicUrl;
-      if(key==='foto_url'){
-        setFormData(f=>({...f,foto_url:publicUrl}));
-      }else{
-        setFormData(f=>({...f,[key]:f[key]?[...(Array.isArray(f[key])?f[key]:[f[key]]),publicUrl]:[publicUrl]}));
-      }
-    }else{
-      alert('Erro ao fazer upload: '+error.message);
-    }
-    setUploadingFoto(false);
-  };
-
-  const saveImovel=async(data)=>{
-    const saveData={
-      titulo:data.titulo,
-      tipo:data.tipo,
-      status:data.status,
-      localizacao:data.localizacao,
-      area:String(data.area||''),
-      descricao:data.descricao||'',
-      empreendimento:data.empreendimento||'',
-      foto_url:data.foto_url||null,
-      preco:Number(data.preco)||0,
-      aluguel:Number(data.aluguel)||0,
-      fotos_internas:data.fotos_internas?JSON.stringify(Array.isArray(data.fotos_internas)?data.fotos_internas:[data.fotos_internas]):null,
-      plantas_url:data.plantas_url?(typeof data.plantas_url==='object'?JSON.stringify(data.plantas_url):data.plantas_url):null,
-    };
-    if(data.id){
-      saveData.captador_id=data.captador_id||user.id;
-      const {data:d,error}=await db.from('imoveis').update(saveData).eq('id',data.id).select().single();
-      if(error){alert('Erro ao salvar: '+error.message);return;}
-      if(d){setImoveis(imoveis.map(i=>i.id===d.id?d:i));setSelected(d);}
-    }else{
-      saveData.captador_id=user.id;
-      const {data:d,error}=await db.from('imoveis').insert(saveData).select().single();
-      if(error){alert('Erro ao criar: '+error.message);return;}
-      if(d)setImoveis([...imoveis,d]);
-    }
-    setModal(null);setEditImovel(null);
-  };
-
-  const deleteImovel=async(id)=>{
-    if(!confirm('Excluir este imóvel?'))return;
-    await db.from('imoveis').delete().eq('id',id);
-    setImoveis(imoveis.filter(i=>i.id!==id));
-    setSelected(null);
-  };
-
-  const openEdit=(im)=>{
-    setEditImovel(im);
-    setFormData({...im,fotos_internas:parseArr(im.fotos_internas),plantas_url:(()=>{try{const p=JSON.parse(im.plantas_url||'{}');return typeof p==='object'&&!Array.isArray(p)?p:{};}catch(e){return{};}})()});
+          );
+        })()});
     setModal('form');
   };
 

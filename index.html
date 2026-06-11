@@ -902,6 +902,289 @@ function DetailPanel({selected,onClose,onEdit,onDelete}){
   );
 }
 // ── Agenda ──
+function Imoveis({imoveis,setImoveis,user}){
+  const [modal,setModal]=useState(null);
+  const [selected,setSelected]=useState(null);
+  const [editImovel,setEditImovel]=useState(null);
+  const [uploadingFoto,setUploadingFoto]=useState(false);
+  const [formData,setFormData]=useState({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível',empreendimento:'',foto_url:null,fotos_internas:null,plantas_url:{}});
+
+  const parseArr=(val)=>{
+    if(!val)return[];
+    if(Array.isArray(val))return val;
+    try{const p=JSON.parse(val);return Array.isArray(p)?p:[p];}catch(e){return[val];}
+  };
+
+  const parsePlants=(val)=>{
+    if(!val)return{};
+    if(typeof val==='object'&&!Array.isArray(val))return val;
+    try{
+      const p=JSON.parse(val);
+      if(Array.isArray(p)){
+        const obj={};
+        p.forEach((url,i)=>{if(url)obj[`Tipo ${String(i+1).padStart(2,'0')}`]=url;});
+        return obj;
+      }
+      return typeof p==='object'?p:{};
+    }catch(e){return{};}
+  };
+
+  const handleFotoUpload=async(file,key='foto_url')=>{
+    setUploadingFoto(key);
+    const ext=file.name.split('.').pop();
+    const fileName=`imovel_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const {data,error}=await db.storage.from('imoveis').upload(fileName,file,{upsert:true});
+    if(!error){
+      const {data:url}=db.storage.from('imoveis').getPublicUrl(fileName);
+      const publicUrl=url.publicUrl;
+      if(key==='foto_url'){
+        setFormData(f=>({...f,foto_url:publicUrl}));
+      }else{
+        setFormData(f=>({...f,[key]:f[key]?[...(Array.isArray(f[key])?f[key]:[f[key]]),publicUrl]:[publicUrl]}));
+      }
+    }else{alert('Erro ao fazer upload: '+error.message);}
+    setUploadingFoto(false);
+  };
+
+  const saveImovel=async(data)=>{
+    const plantasVal=data.plantas_url?(typeof data.plantas_url==='object'?JSON.stringify(data.plantas_url):data.plantas_url):null;
+    const saveData={
+      titulo:data.titulo,tipo:data.tipo,status:data.status,
+      localizacao:data.localizacao,area:String(data.area||''),
+      descricao:data.descricao||'',empreendimento:data.empreendimento||'',
+      foto_url:data.foto_url||null,preco:Number(data.preco)||0,aluguel:Number(data.aluguel)||0,
+      fotos_internas:data.fotos_internas?JSON.stringify(Array.isArray(data.fotos_internas)?data.fotos_internas:[data.fotos_internas]):null,
+      plantas_url:plantasVal,
+    };
+    if(data.id){
+      saveData.captador_id=data.captador_id||user.id;
+      const {data:d,error}=await db.from('imoveis').update(saveData).eq('id',data.id).select().single();
+      if(error){alert('Erro ao salvar: '+error.message);return;}
+      if(d){setImoveis(imoveis.map(i=>i.id===d.id?d:i));setSelected(d);}
+    }else{
+      saveData.captador_id=user.id;
+      const {data:d,error}=await db.from('imoveis').insert(saveData).select().single();
+      if(error){alert('Erro ao criar: '+error.message);return;}
+      if(d)setImoveis([...imoveis,d]);
+    }
+    setModal(null);setEditImovel(null);
+  };
+
+  const deleteImovel=async(id)=>{
+    if(!confirm('Excluir este imóvel?'))return;
+    await db.from('imoveis').delete().eq('id',id);
+    setImoveis(imoveis.filter(i=>i.id!==id));
+    setSelected(null);
+  };
+
+  const openEdit=(im)=>{
+    setEditImovel(im);
+    setFormData({...im,fotos_internas:parseArr(im.fotos_internas),plantas_url:parsePlants(im.plantas_url)});
+    setModal('form');
+  };
+
+  return(
+    <div className="fade" style={{position:'relative'}}>
+      <div className="page-header">
+        <h1 className="page-title">Imóveis</h1>
+        <button className="btn btn-primary" onClick={()=>{setFormData({titulo:'',tipo:'Residencial',preco:'',aluguel:'',localizacao:'',area:'',descricao:'',status:'Disponível',empreendimento:'',foto_url:null,fotos_internas:null,plantas_url:{}});setEditImovel(null);setModal('form');}}>
+          <Icon n="plus" s={18}/> Captar Imóvel
+        </button>
+      </div>
+
+      {Array.from(new Set(imoveis.map(im=>im.empreendimento||im.titulo))).map(emp=>{
+        const grupo=imoveis.filter(im=>(im.empreendimento||im.titulo)===emp);
+        return(
+          <div key={emp} style={{marginBottom:32}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+              <h2 style={{fontSize:16,fontWeight:800,color:'#102136'}}>{emp}</h2>
+              <div style={{flex:1,height:1,background:'#e2e8f0'}}/>
+              <span style={{fontSize:12,color:'#94a3b8'}}>{grupo.length} tipologia{grupo.length>1?'s':''}</span>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+              {grupo.map(im=>(
+                <div key={im.id} onClick={()=>setSelected(im)}
+                  style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected&&selected.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s',transform:selected&&selected.id===im.id?'scale(1.02)':'scale(1)'}}>
+                  <div style={{height:280,position:'relative',overflow:'hidden'}}>
+                    {im.foto_url
+                      ?<img src={im.foto_url} style={{width:'100%',height:'100%',objectFit:'cover',position:'absolute',top:0,left:0}} alt={im.titulo} loading="lazy"/>
+                      :<div style={{height:'100%',background:'linear-gradient(160deg,#0f1e2b,#1e3347)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}>
+                        <Icon n="bld" s={48} c="rgba(255,255,255,0.15)"/>
+                        <div style={{fontSize:11,color:'rgba(255,255,255,0.3)'}}>Sem foto</div>
+                      </div>}
+                    <div style={{position:'absolute',top:10,left:10,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.tipo}</div>
+                    <div style={{position:'absolute',top:10,right:10}}>
+                      <span style={{background:`${({Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'}[im.status]||'#888')}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.status}</span>
+                    </div>
+                  </div>
+                  <div style={{padding:'14px 16px'}}>
+                    <div style={{fontSize:14,fontWeight:700,color:'#102136',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.titulo}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:10}}>
+                      <Icon n="pin" s={12} c="#94a3b8"/>
+                      <span style={{fontSize:12,color:'#94a3b8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.localizacao}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontSize:10,color:'#94a3b8'}}>Venda</div>
+                        <div style={{fontSize:14,fontWeight:700,color:'#2b9fef'}}>{im.preco?fmt(im.preco):'—'}</div>
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontSize:10,color:'#94a3b8'}}>Área</div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#102136'}}>{im.area&&String(im.area)!='0'&&String(im.area)!==''?`${im.area}m²`:'—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {imoveis.length===0&&(
+        <div style={{textAlign:'center',padding:'60px 20px',color:'#94a3b8'}}>
+          <Icon n="bld" s={48} c="#e2e8f0"/>
+          <div style={{marginTop:12,fontSize:14}}>Nenhum imóvel cadastrado.</div>
+        </div>
+      )}
+
+      {selected&&<>
+        <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.2)',zIndex:499}}/>
+        <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)}/>
+      </>}
+
+      {modal==='form'&&(
+        <div className="modal-overlay" onClick={()=>setModal(null)}>
+          <div className="modal-content" onClick={e=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{editImovel?'Editar Imóvel':'Captar Imóvel'}</h2>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8'}}><Icon n="x" s={20}/></button>
+            </div>
+            <div className="form-group"><label className="form-label">Empreendimento *</label><input className="form-input" placeholder="Ex: Villagio Di Trapani" value={formData.empreendimento||''} onChange={e=>setFormData({...formData,empreendimento:e.target.value})}/></div>
+            <div className="form-group"><label className="form-label">Tipologia / Título *</label><input className="form-input" placeholder="Ex: Studio, Apartamento Padrão, Cobertura" value={formData.titulo||''} onChange={e=>setFormData({...formData,titulo:e.target.value})}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="form-group"><label className="form-label">Tipo</label>
+                <select className="form-input" value={formData.tipo||'Residencial'} onChange={e=>setFormData({...formData,tipo:e.target.value})}>
+                  {['Residencial','Studio','Sala','Loja','Galpão','Conjunto','Escritório','Ponto Comercial','Outro'].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group"><label className="form-label">Status</label>
+                <select className="form-input" value={formData.status||'Disponível'} onChange={e=>setFormData({...formData,status:e.target.value})}>
+                  {['Disponível','Reservado','Negociando','Vendido'].map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group"><label className="form-label">Localização</label><input className="form-input" value={formData.localizacao||''} onChange={e=>setFormData({...formData,localizacao:e.target.value})}/></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+              <div className="form-group"><label className="form-label">Área (m²)</label><input className="form-input" type="text" placeholder="Ex: 58,85 - 85,60" value={formData.area||''} onChange={e=>setFormData({...formData,area:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Venda (R$)</label><input className="form-input" type="number" value={formData.preco||''} onChange={e=>setFormData({...formData,preco:e.target.value})}/></div>
+              <div className="form-group"><label className="form-label">Aluguel/mês</label><input className="form-input" type="number" value={formData.aluguel||''} onChange={e=>setFormData({...formData,aluguel:e.target.value})}/></div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Imagens do Imóvel</label>
+              <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                {[
+                  {key:'foto_url',label:'📸 Foto de Capa',desc:'Imagem principal do card na galeria',id:'upload-capa',multi:false},
+                  {key:'fotos_internas',label:'🏠 Imagens Internas',desc:'Fotos dos ambientes internos',id:'upload-internas',multi:true},
+                ].map(({key,label,desc,id,multi})=>(
+                  <div key={key} style={{border:'2px dashed #e2e8f0',borderRadius:10,padding:14,background:'#f8fafc'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#102136'}}>{label}</div>
+                        <div style={{fontSize:11,color:'#94a3b8'}}>{desc}</div>
+                      </div>
+                      <button type="button" onClick={()=>document.getElementById(id).click()}
+                        style={{padding:'6px 14px',borderRadius:7,background:uploadingFoto===key?'#94a3b8':'#2b9fef',border:'none',color:'#fff',fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                        {uploadingFoto===key?'Enviando...':'Escolher'}
+                      </button>
+                    </div>
+                    {(()=>{
+                      const imgs=key==='foto_url'?(formData[key]?[formData[key]]:[]):(Array.isArray(formData[key])?formData[key]:formData[key]?[formData[key]]:[]);
+                      return imgs.length>0&&(
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
+                          {imgs.map((url,i)=>(
+                            <div key={i} style={{position:'relative'}}>
+                              <img src={url} style={{width:64,height:64,objectFit:'cover',borderRadius:6,border:'1px solid #e2e8f0'}}/>
+                              <div onClick={()=>{
+                                if(key==='foto_url'){setFormData(f=>({...f,foto_url:null}));}
+                                else{const arr=(Array.isArray(formData[key])?formData[key]:[]).filter((_,j)=>j!==i);setFormData(f=>({...f,[key]:arr.length?arr:null}));}
+                              }} style={{position:'absolute',top:-4,right:-4,width:18,height:18,borderRadius:'50%',background:'#EF4444',color:'#fff',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontWeight:700}}>x</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    <input id={id} type="file" accept="image/*" multiple={multi} style={{display:'none'}}
+                      onChange={async e=>{const files=Array.from(e.target.files);for(const file of files){await handleFotoUpload(file,key);}}}/>
+                  </div>
+                ))}
+                <div style={{border:'2px dashed #e2e8f0',borderRadius:10,padding:14,background:'#f8fafc'}}>
+                  <div style={{fontSize:13,fontWeight:600,color:'#102136',marginBottom:4}}>Plantas por Tipologia</div>
+                  <div style={{fontSize:11,color:'#94a3b8',marginBottom:12}}>Adicione a planta de cada tipologia (Tipo 01 ao Tipo 10)</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {Array.from({length:10},(_,i)=>{
+                      const n=String(i+1).padStart(2,'0');
+                      const tipo='Tipo '+n;
+                      const obj=formData.plantas_url&&typeof formData.plantas_url==='object'&&!Array.isArray(formData.plantas_url)?formData.plantas_url:{};
+                      const url=obj[tipo];
+                      const inputId='planta-tipo-'+n;
+                      return(
+                        <div key={tipo} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',background:'#fff',borderRadius:8,border:'1px solid #e2e8f0'}}>
+                          <div style={{width:48,height:48,borderRadius:7,overflow:'hidden',border:'1px solid #e2e8f0',flexShrink:0,background:'#f1f3f4',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}
+                            onClick={()=>document.getElementById(inputId).click()}>
+                            {url?<img src={url} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<Icon n="plus" s={16} c="#c8d0d8"/>}
+                          </div>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:13,fontWeight:600,color:'#202124'}}>{tipo}</div>
+                            <div style={{fontSize:11,color:url?'#34a853':'#9aa0a6'}}>{url?'Cadastrada':'Sem planta'}</div>
+                          </div>
+                          <div style={{display:'flex',gap:6}}>
+                            <button type="button" onClick={()=>document.getElementById(inputId).click()}
+                              style={{padding:'5px 12px',borderRadius:6,background:'#1a73e8',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer'}}>
+                              {uploadingFoto==='planta-tipo-'+n?'...':url?'Trocar':'Adicionar'}
+                            </button>
+                            {url&&<button type="button" onClick={()=>{
+                              const o={...obj};delete o[tipo];
+                              setFormData(f=>({...f,plantas_url:o}));
+                            }} style={{padding:'5px 8px',borderRadius:6,background:'#fce8e6',border:'none',color:'#d93025',fontSize:12,fontWeight:700,cursor:'pointer'}}>x</button>}
+                          </div>
+                          <input id={inputId} type="file" accept="image/*" style={{display:'none'}}
+                            onChange={async e=>{
+                              const file=e.target.files[0];if(!file)return;
+                              setUploadingFoto('planta-tipo-'+n);
+                              const ext=file.name.split('.').pop();
+                              const fn='planta_tipo'+n+'_'+Date.now()+'.'+ext;
+                              const {error}=await db.storage.from('imoveis').upload(fn,file,{upsert:true});
+                              if(!error){
+                                const {data:u}=db.storage.from('imoveis').getPublicUrl(fn);
+                                setFormData(f=>{
+                                  const o=f.plantas_url&&typeof f.plantas_url==='object'&&!Array.isArray(f.plantas_url)?{...f.plantas_url}:{};
+                                  o[tipo]=u.publicUrl;
+                                  return{...f,plantas_url:o};
+                                });
+                              }else{alert('Erro: '+error.message);}
+                              setUploadingFoto(false);
+                            }}/>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="form-group"><label className="form-label">Descrição</label><textarea className="form-input" rows={3} value={formData.descricao||''} onChange={e=>setFormData({...formData,descricao:e.target.value})} style={{resize:'vertical'}}/></div>
+            <div style={{display:'flex',gap:12,marginTop:8}}>
+              <button className="btn btn-secondary" onClick={()=>{setModal(null);setEditImovel(null);}} style={{flex:1,justifyContent:'center'}}>Cancelar</button>
+              <button className="btn btn-primary" onClick={()=>saveImovel({...formData,...(editImovel?{id:editImovel.id,captador_id:editImovel.captador_id}:{})})} style={{flex:2,justifyContent:'center'}}>
+                {editImovel?'Salvar':'Registrar Imóvel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Agenda({visitas,leads,imoveis,user}){
   const myVisits=user.is_admin?visitas:visitas.filter(v=>v.corretor_id===user.id);
   return (

@@ -507,7 +507,7 @@ function Lightbox({url,urls=[],onClose}){
 }
 
 // DETAIL PANEL
-function DetailPanel({selected,onClose,onEdit,onDelete}){
+function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades}){
   const [tab,setTab]=useState('overview');
   const [lb,setLb]=useState(null);
   const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
@@ -524,7 +524,7 @@ function DetailPanel({selected,onClose,onEdit,onDelete}){
     {id:'overview',label:'Visão Geral'},
     {id:'gallery',label:`Fotos${fotosInt.length?` (${fotosInt.length})`:''}`},
     {id:'plants',label:`Plantas${allUrls.length?` (${allUrls.length})`:''}`},
-    {id:'simulador',label:'Simulador'},
+    {id:'unidades',label:`Unidades${(unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length>0?` (${unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length})`:'')}`},
   ];
   return(
     <div style={{position:'fixed',top:0,right:0,width:480,height:'100vh',background:'#fff',borderLeft:'1px solid #e8eaed',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -634,17 +634,149 @@ function DetailPanel({selected,onClose,onEdit,onDelete}){
             <div style={{border:'1px solid #e8eaed',borderRadius:10,padding:'32px 24px',textAlign:'center',background:'#f8f9fa'}}>
               <div style={{fontSize:28,marginBottom:12}}>💰</div>
               <div style={{fontSize:15,fontWeight:600,color:'#202124',marginBottom:6}}>Simulador de Financiamento</div>
-              <div style={{fontSize:13,color:'#9aa0a6',lineHeight:1.7}}>Em desenvolvimento.</div>
+              <div style={{fontSize:13,color:'#9aa0a6',lineHeight:1.7}}>Selecione uma unidade na aba Unidades para simular.</div>
             </div>
           </div>
         )}
+        {tab==='unidades'&&(()=>{
+          const empNome=selected.empreendimento||selected.titulo;
+          const empUnits=unidades.filter(u=>u.empreendimento===empNome).sort((a,b)=>b.andar-a.andar||a.unidade-b.unidade);
+          const andares=[...new Set(empUnits.map(u=>u.andar))].sort((a,b)=>b-a);
+          const stColor={'Disponível':'#22C55E','Reservado':'#C8912A','Vendido':'#EF4444'};
+          const [selU,setSelU]=React.useState(null);
+          const [salvando,setSalvando]=React.useState(false);
+          const [entrada,setEntrada]=React.useState(20);
+          const [meses,setMeses]=React.useState(48);
+
+          if(empUnits.length===0) return(
+            <div style={{padding:20,textAlign:'center',color:'#9aa0a6',paddingTop:48}}>
+              <div style={{fontSize:32,marginBottom:10}}>🏢</div>
+              <div style={{fontSize:14,fontWeight:500,color:'#5f6368'}}>Sem tabela de unidades</div>
+            </div>
+          );
+
+          const total=empUnits.length;
+          const disp=empUnits.filter(u=>u.status==='Disponível').length;
+          const vend=empUnits.filter(u=>u.status==='Vendido').length;
+          const reserv=empUnits.filter(u=>u.status==='Reservado').length;
+
+          const updateStatus=async(id,status)=>{
+            setSalvando(true);
+            const {data,error}=await db.from('unidades').update({status}).eq('id',id).select().single();
+            if(!error&&data){setUnidades(p=>p.map(u=>u.id===id?data:u));setSelU(data);}
+            else if(error)alert('Erro: '+error.message);
+            setSalvando(false);
+          };
+
+          const preco=selU?.preco||0;
+          const entV=preco*(entrada/100);
+          const obraV=preco*0.20;
+          const repasse=preco-(entV+obraV);
+          const parcMes=obraV/meses;
+
+          return(
+            <div style={{padding:16}}>
+              {/* Mini resumo */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
+                {[{l:'Total',v:total,c:'#5f6368'},{l:'Disp.',v:disp,c:'#22C55E'},{l:'Reserv.',v:reserv,c:'#C8912A'},{l:'Vend.',v:vend,c:'#EF4444'}].map(({l,v,c})=>(
+                  <div key={l} style={{background:'#f8f9fa',borderRadius:8,padding:'8px',textAlign:'center',border:`1px solid ${c}30`}}>
+                    <div style={{fontSize:18,fontWeight:800,color:c}}>{v}</div>
+                    <div style={{fontSize:10,color:'#9aa0a6',fontWeight:600}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Grade por andar */}
+              <div style={{background:'#fff',borderRadius:10,border:'1px solid #e8eaed',overflow:'hidden',marginBottom:14}}>
+                <div style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',background:'#f1f5f9',borderBottom:'1px solid #e8eaed'}}>
+                  <div style={{padding:'6px 4px',fontSize:10,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>AND</div>
+                  {[1,2,3,4,5,6,7].map(n=><div key={n} style={{padding:'6px 2px',fontSize:10,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>0{n}</div>)}
+                </div>
+                {andares.map(andar=>{
+                  const units=empUnits.filter(u=>u.andar===andar);
+                  return(
+                    <div key={andar} style={{display:'grid',gridTemplateColumns:'44px repeat(7,1fr)',borderBottom:'1px solid #f1f5f9'}}>
+                      <div style={{padding:'8px 4px',fontSize:11,fontWeight:700,color:'#102136',textAlign:'center',background:'#f8f9fa',display:'flex',alignItems:'center',justifyContent:'center',borderRight:'1px solid #e8eaed'}}>{andar}º</div>
+                      {units.map(u=>{
+                        const c=stColor[u.status]||'#9aa0a6';
+                        const sel=selU&&selU.id===u.id;
+                        return(
+                          <div key={u.id} onClick={()=>setSelU(sel?null:u)}
+                            style={{padding:'5px 2px',cursor:'pointer',textAlign:'center',background:sel?c+'22':'transparent',borderLeft:'1px solid #f1f5f9'}}>
+                            <div style={{width:30,height:30,borderRadius:6,background:c+'20',border:`2px solid ${sel?c:c+'50'}`,margin:'0 auto 2px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:c}}>
+                              {u.apto}
+                            </div>
+                            <div style={{fontSize:8,color:'#9aa0a6'}}>{u.area}m²</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Painel da unidade selecionada */}
+              {selU&&(
+                <div style={{background:'#fff',borderRadius:10,border:`1px solid ${stColor[selU.status]}40`,overflow:'hidden'}}>
+                  <div style={{padding:'12px 14px',background:stColor[selU.status]+'15',borderBottom:`1px solid ${stColor[selU.status]}30`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div style={{fontSize:16,fontWeight:800,color:'#102136'}}>Apto {selU.apto}</div>
+                      <div style={{fontSize:12,color:'#5f6368'}}>{selU.andar}º andar · {selU.tipo} · {selU.area}m²</div>
+                    </div>
+                    <span style={{background:stColor[selU.status],borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,color:'#fff'}}>{selU.status}</span>
+                  </div>
+                  <div style={{padding:14}}>
+                    {selU.preco&&<div style={{fontSize:20,fontWeight:800,color:'#2b9fef',marginBottom:12}}>{fmt(selU.preco)}</div>}
+                    <div style={{display:'flex',gap:6,marginBottom:selU.preco?14:0}}>
+                      {['Disponível','Reservado','Vendido'].map(s=>(
+                        <button key={s} onClick={()=>updateStatus(selU.id,s)} disabled={salvando||selU.status===s}
+                          style={{flex:1,padding:'6px 4px',borderRadius:7,border:`1.5px solid ${selU.status===s?stColor[s]:'#e8eaed'}`,background:selU.status===s?stColor[s]+'20':'#fff',color:selU.status===s?stColor[s]:'#5f6368',fontSize:11,fontWeight:600,cursor:selU.status===s?'default':'pointer'}}>
+                          {s==='Disponível'?'Disp.':s}
+                        </button>
+                      ))}
+                    </div>
+                    {selU.preco&&<>
+                      <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Simulador</div>
+                      <div style={{marginBottom:10}}>
+                        <div style={{fontSize:11,color:'#5f6368',marginBottom:4}}>Entrada: <b style={{color:'#22C55E'}}>{entrada}% = {fmt(entV)}</b></div>
+                        <input type="range" min={5} max={50} value={entrada} onChange={e=>setEntrada(Number(e.target.value))} style={{width:'100%',accentColor:'#22C55E'}}/>
+                      </div>
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:11,color:'#5f6368',marginBottom:4}}>Parcelas na obra: <b style={{color:'#C8912A'}}>{meses}x = {fmt(parcMes)}/mês</b></div>
+                        <input type="range" min={12} max={60} value={meses} onChange={e=>setMeses(Number(e.target.value))} style={{width:'100%',accentColor:'#C8912A'}}/>
+                      </div>
+                      <div style={{borderTop:'1px solid #e8eaed',paddingTop:10}}>
+                        {[{l:'Entrada',v:fmt(entV),c:'#22C55E'},{l:`Obra (${meses}x)`,v:fmt(parcMes)+'/mês',c:'#C8912A'},{l:'Repasse',v:fmt(repasse),c:'#2b9fef'}].map(({l,v,c})=>(
+                          <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:7}}>
+                            <span style={{fontSize:12,color:'#5f6368'}}>{l}</span>
+                            <span style={{fontSize:13,fontWeight:700,color:c}}>{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>}
+                  </div>
+                </div>
+              )}
+
+              {/* Legenda */}
+              <div style={{display:'flex',gap:12,marginTop:12,justifyContent:'center'}}>
+                {Object.entries(stColor).map(([s,c])=>(
+                  <div key={s} style={{display:'flex',alignItems:'center',gap:4,fontSize:11}}>
+                    <div style={{width:10,height:10,borderRadius:3,background:c}}/>
+                    <span style={{color:'#9aa0a6'}}>{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
 // IMÓVEIS
-function Imoveis({imoveis,setImoveis,user}){
+function Imoveis({imoveis,setImoveis,user,unidades,setUnidades}){
   const [modal,setModal]=useState(null);
   const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
@@ -764,7 +896,7 @@ function Imoveis({imoveis,setImoveis,user}){
 
       {selected&&<>
         <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.15)',zIndex:499}}/>
-        <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)}/>
+        <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)} unidades={unidades} setUnidades={setUnidades}/>
       </>}
 
       {modal==='form'&&(
@@ -1286,7 +1418,6 @@ function App(){
     {id:'imoveis',label:'Imóveis',ic:'bld'},
     {id:'agenda',label:'Agenda',ic:'cal'},
     {id:'tarefas',label:'Tarefas',ic:'task'},
-    {id:'mapa',label:'Mapa',ic:'bld'},
     {id:'relatorios',label:'Relatórios',ic:'chart'},
   ];
 
@@ -1340,10 +1471,9 @@ function App(){
             :<>
               {sec==='dashboard'&&<Dashboard leads={leads} tarefas={tarefas} visitas={visitas} imoveis={imoveis} user={user} isAdmin={isAdmin} corretores={corretores} setSec={setSec}/>}
               {sec==='pipeline'&&<Pipeline leads={leads} imoveis={imoveis} user={user} isAdmin={isAdmin} setLeads={setLeads} corretores={corretores}/>}
-              {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user}/>}
+              {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user} unidades={unidades} setUnidades={setUnidades}/>}
               {sec==='agenda'&&<Agenda visitas={visitas} user={user} isAdmin={isAdmin}/>}
               {sec==='tarefas'&&<Tarefas tarefas={tarefas} setTarefas={setTarefas} user={user} isAdmin={isAdmin}/>}
-              {sec==='mapa'&&<MapaUnidades unidades={unidades} setUnidades={setUnidades} leads={leads} user={user} isAdmin={isAdmin}/>}
               {sec==='relatorios'&&<Relatorios leads={leads} corretores={corretores}/>}
             </>}
         </div>

@@ -988,6 +988,218 @@ function Tarefas({tarefas,setTarefas,user,isAdmin}){
   );
 }
 
+// MAPA DE UNIDADES
+function MapaUnidades({unidades,setUnidades,leads,user,isAdmin}){
+  const [emp,setEmp]=useState('Villagio Di Trapani');
+  const [selUnit,setSelUnit]=useState(null);
+  const [simOpen,setSimOpen]=useState(false);
+  const [entrada,setEntrada]=useState(20);
+  const [meses,setMeses]=useState(48);
+  const [salvando,setSalvando]=useState(false);
+
+  const emps=[...new Set(unidades.map(u=>u.empreendimento))];
+  const filtered=unidades.filter(u=>u.empreendimento===emp);
+  const andares=[...new Set(filtered.map(u=>u.andar))].sort((a,b)=>b-a);
+
+  const statusColor={
+    'Disponível':'#22C55E',
+    'Reservado':'#C8912A',
+    'Vendido':'#EF4444',
+  };
+
+  const resumo={
+    total:filtered.length,
+    disponiveis:filtered.filter(u=>u.status==='Disponível').length,
+    reservados:filtered.filter(u=>u.status==='Reservado').length,
+    vendidos:filtered.filter(u=>u.status==='Vendido').length,
+    vgv:filtered.filter(u=>u.status==='Disponível'&&u.preco).reduce((s,u)=>s+(u.preco||0),0),
+    vendido_total:filtered.filter(u=>u.status==='Vendido'&&u.preco).reduce((s,u)=>s+(u.preco||0),0),
+  };
+
+  const updateStatus=async(id,status)=>{
+    setSalvando(true);
+    const {data,error}=await db.from('unidades').update({status,atualizado_em:new Date().toISOString()}).eq('id',id).select().single();
+    if(!error&&data){
+      setUnidades(p=>p.map(u=>u.id===id?data:u));
+      setSelUnit(data);
+    }else if(error){alert('Erro: '+error.message);}
+    setSalvando(false);
+  };
+
+  // Simulator
+  const preco=selUnit?.preco||0;
+  const entradaVal=preco*(entrada/100);
+  const obraVal=preco*0.20;
+  const repasse=preco-(entradaVal+obraVal);
+  const parcObraVal=obraVal/meses;
+
+  return(
+    <div className="fade">
+      <div className="page-header">
+        <h1 className="page-title">Mapa de Disponibilidade</h1>
+        {emps.length>1&&(
+          <div style={{display:'flex',gap:6}}>
+            {emps.map(e=>(
+              <button key={e} onClick={()=>setEmp(e)}
+                style={{padding:'7px 14px',borderRadius:7,border:`1.5px solid ${emp===e?'#2b9fef':'#e8eaed'}`,background:emp===e?'rgba(43,159,239,0.08)':'#fff',color:emp===e?'#2b9fef':'#5f6368',fontSize:13,cursor:'pointer',fontWeight:emp===e?600:400}}>
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Resumo */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:24}}>
+        {[
+          {l:'Total',v:resumo.total,col:'#5f6368'},
+          {l:'Disponíveis',v:resumo.disponiveis,col:'#22C55E'},
+          {l:'Reservados',v:resumo.reservados,col:'#C8912A'},
+          {l:'Vendidos',v:resumo.vendidos,col:'#EF4444'},
+          {l:'VGV Disponível',v:fmt(resumo.vgv),col:'#2b9fef'},
+        ].map(({l,v,col})=>(
+          <div key={l} className="stat-box" style={{borderTop:`3px solid ${col}`,padding:14}}>
+            <div className="stat-lbl" style={{marginBottom:6}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:col}}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legenda */}
+      <div style={{display:'flex',gap:16,marginBottom:16,alignItems:'center'}}>
+        {Object.entries(statusColor).map(([s,c])=>(
+          <div key={s} style={{display:'flex',alignItems:'center',gap:6,fontSize:13}}>
+            <div style={{width:14,height:14,borderRadius:4,background:c}}/>
+            <span style={{color:'#5f6368'}}>{s}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:'flex',gap:20}}>
+        {/* Grade por andar */}
+        <div style={{flex:1,background:'#fff',borderRadius:12,border:'1px solid #e8eaed',overflow:'hidden'}}>
+          <div style={{padding:'12px 16px',borderBottom:'1px solid #e8eaed',background:'#f8f9fa',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:13,fontWeight:700,color:'#102136'}}>{emp}</span>
+            <span style={{fontSize:12,color:'#9aa0a6'}}>{andares.length} andares · 7 unidades/andar</span>
+          </div>
+          <div style={{overflowY:'auto',maxHeight:'calc(100vh - 340px)'}}>
+            {/* Header */}
+            <div style={{display:'grid',gridTemplateColumns:'70px repeat(7,1fr)',borderBottom:'2px solid #e8eaed',background:'#f1f5f9'}}>
+              <div style={{padding:'8px',fontSize:11,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>ANDAR</div>
+              {[1,2,3,4,5,6,7].map(n=>(
+                <div key={n} style={{padding:'8px',fontSize:11,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>0{n}</div>
+              ))}
+            </div>
+            {/* Rows */}
+            {andares.map(andar=>{
+              const units=filtered.filter(u=>u.andar===andar).sort((a,b)=>a.unidade-b.unidade);
+              return(
+                <div key={andar} style={{display:'grid',gridTemplateColumns:'70px repeat(7,1fr)',borderBottom:'1px solid #f1f5f9'}}>
+                  <div style={{padding:'10px 8px',fontSize:12,fontWeight:700,color:'#102136',textAlign:'center',background:'#f8f9fa',display:'flex',alignItems:'center',justifyContent:'center',borderRight:'1px solid #e8eaed'}}>
+                    {andar}º
+                  </div>
+                  {units.map(u=>{
+                    const col=statusColor[u.status]||'#9aa0a6';
+                    const isSel=selUnit&&selUnit.id===u.id;
+                    return(
+                      <div key={u.id} onClick={()=>{setSelUnit(u);setSimOpen(false);}}
+                        style={{padding:'8px 4px',cursor:'pointer',textAlign:'center',background:isSel?`${col}22`:'transparent',borderLeft:'1px solid #f1f5f9',transition:'all .15s',position:'relative'}}>
+                        <div style={{width:36,height:36,borderRadius:8,background:`${col}20`,border:`2px solid ${isSel?col:col+'60'}`,margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:col,transition:'all .15s'}}>
+                          {u.apto}
+                        </div>
+                        <div style={{fontSize:9,color:'#9aa0a6',lineHeight:1.2}}>{u.tipo==='Estúdio'?'Est.':'2em1'}</div>
+                        <div style={{fontSize:9,color:'#9aa0a6'}}>{u.area}m²</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Painel lateral da unidade */}
+        {selUnit&&(
+          <div style={{width:300,background:'#fff',borderRadius:12,border:'1px solid #e8eaed',height:'fit-content',overflow:'hidden',flexShrink:0}}>
+            {/* Header */}
+            <div style={{padding:'14px 16px',borderBottom:'1px solid #e8eaed',display:'flex',justifyContent:'space-between',alignItems:'center',background:statusColor[selUnit.status]+'18'}}>
+              <div>
+                <div style={{fontSize:20,fontWeight:800,color:'#102136'}}>Apto {selUnit.apto}</div>
+                <div style={{fontSize:12,color:'#5f6368'}}>{selUnit.andar}º andar · {selUnit.tipo}</div>
+              </div>
+              <div style={{background:statusColor[selUnit.status],borderRadius:8,padding:'4px 12px',fontSize:12,fontWeight:700,color:'#fff'}}>{selUnit.status}</div>
+            </div>
+
+            <div style={{padding:16}}>
+              {/* Infos */}
+              {[
+                {l:'Área',v:`${selUnit.area} m²`},
+                {l:'Tipo',v:selUnit.tipo},
+                {l:'Valor',v:selUnit.preco?fmt(selUnit.preco):'—'},
+              ].map(({l,v})=>(
+                <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid #f1f5f9'}}>
+                  <span style={{fontSize:13,color:'#9aa0a6'}}>{l}</span>
+                  <span style={{fontSize:13,fontWeight:600,color:'#102124'}}>{v}</span>
+                </div>
+              ))}
+
+              {/* Alterar status */}
+              <div style={{marginTop:14,marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Alterar Status</div>
+                <div style={{display:'flex',gap:6}}>
+                  {['Disponível','Reservado','Vendido'].map(s=>(
+                    <button key={s} onClick={()=>updateStatus(selUnit.id,s)} disabled={salvando||selUnit.status===s}
+                      style={{flex:1,padding:'7px 4px',borderRadius:7,border:`1.5px solid ${selUnit.status===s?statusColor[s]:'#e8eaed'}`,background:selUnit.status===s?statusColor[s]+'18':'#fff',color:selUnit.status===s?statusColor[s]:'#5f6368',fontSize:11,fontWeight:600,cursor:selUnit.status===s?'default':'pointer',transition:'all .15s'}}>
+                      {s==='Disponível'?'Disp.':s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Simulador */}
+              {selUnit.preco&&(
+                <div>
+                  <button onClick={()=>setSimOpen(p=>!p)}
+                    style={{width:'100%',padding:'9px',borderRadius:8,background:'#102136',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',marginBottom:simOpen?12:0}}>
+                    💰 {simOpen?'Fechar':'Simular Financiamento'}
+                  </button>
+                  {simOpen&&(
+                    <div style={{background:'#f8f9fa',borderRadius:10,padding:14}}>
+                      <div style={{fontSize:12,fontWeight:700,color:'#102136',marginBottom:12}}>Valor: {fmt(preco)}</div>
+                      <div style={{marginBottom:10}}>
+                        <div style={{fontSize:11,color:'#5f6368',marginBottom:4}}>Entrada: <strong style={{color:'#102136'}}>{entrada}% = {fmt(entradaVal)}</strong></div>
+                        <input type="range" min={5} max={50} value={entrada} onChange={e=>setEntrada(Number(e.target.value))} style={{width:'100%',accentColor:'#2b9fef'}}/>
+                      </div>
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:11,color:'#5f6368',marginBottom:4}}>Parcelas na obra: <strong style={{color:'#102136'}}>{meses}x = {fmt(parcObraVal)}/mês</strong></div>
+                        <input type="range" min={12} max={60} value={meses} onChange={e=>setMeses(Number(e.target.value))} style={{width:'100%',accentColor:'#C8912A'}}/>
+                        <div style={{fontSize:10,color:'#9aa0a6',marginTop:2}}>20% do valor em {meses} parcelas</div>
+                      </div>
+                      <div style={{borderTop:'1px solid #e8eaed',paddingTop:10}}>
+                        {[
+                          {l:'Entrada',v:fmt(entradaVal),col:'#22C55E'},
+                          {l:`Obra (${meses}x)`,v:fmt(parcObraVal)+'/mês',col:'#C8912A'},
+                          {l:'Repasse/Financiamento',v:fmt(repasse),col:'#2b9fef'},
+                        ].map(({l,v,col})=>(
+                          <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                            <span style={{fontSize:12,color:'#5f6368'}}>{l}</span>
+                            <span style={{fontSize:12,fontWeight:700,color:col}}>{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 // RELATÓRIOS
 function Relatorios({leads,corretores}){
   const stats=corretores.filter(c=>!c.is_admin).map(c=>{
@@ -1043,6 +1255,7 @@ function App(){
   const [tarefas,setTarefas]=useState([]);
   const [visitas,setVisitas]=useState([]);
   const [corretores,setCorretores]=useState([]);
+  const [unidades,setUnidades]=useState([]);
   const [loading,setLoading]=useState(false);
   const isAdmin=user?.is_admin||false;
 
@@ -1051,14 +1264,15 @@ function App(){
   const loadAll=async()=>{
     setLoading(true);
     try{
-      const [l,im,t,v,c]=await Promise.all([
+      const [l,im,t,v,c,u]=await Promise.all([
         db.from('leads').select('*').order('criado_em',{ascending:false}),
         db.from('imoveis').select('*').order('criado_em',{ascending:false}),
         db.from('tarefas').select('*').order('prazo',{ascending:true}),
         db.from('visitas').select('*').order('data',{ascending:true}),
         db.from('corretores').select('*').order('nome'),
+        db.from('unidades').select('*').order('andar',{ascending:false}).order('unidade'),
       ]);
-      setLeads(l.data||[]);setImoveis(im.data||[]);setTarefas(t.data||[]);setVisitas(v.data||[]);setCorretores(c.data||[]);
+      setLeads(l.data||[]);setImoveis(im.data||[]);setTarefas(t.data||[]);setVisitas(v.data||[]);setCorretores(c.data||[]);setUnidades(u.data||[]);
     }catch(e){console.error(e);}
     setLoading(false);
     document.getElementById('ls')?.remove();
@@ -1072,6 +1286,7 @@ function App(){
     {id:'imoveis',label:'Imóveis',ic:'bld'},
     {id:'agenda',label:'Agenda',ic:'cal'},
     {id:'tarefas',label:'Tarefas',ic:'task'},
+    {id:'mapa',label:'Mapa',ic:'bld'},
     {id:'relatorios',label:'Relatórios',ic:'chart'},
   ];
 
@@ -1128,6 +1343,7 @@ function App(){
               {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user}/>}
               {sec==='agenda'&&<Agenda visitas={visitas} user={user} isAdmin={isAdmin}/>}
               {sec==='tarefas'&&<Tarefas tarefas={tarefas} setTarefas={setTarefas} user={user} isAdmin={isAdmin}/>}
+              {sec==='mapa'&&<MapaUnidades unidades={unidades} setUnidades={setUnidades} leads={leads} user={user} isAdmin={isAdmin}/>}
               {sec==='relatorios'&&<Relatorios leads={leads} corretores={corretores}/>}
             </>}
         </div>

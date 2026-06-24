@@ -663,7 +663,7 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades})
   const fotosInt=parseArr(selected.fotos_internas);
   const plantasObj=parsePlants(selected.plantas_url);
   const allUrls=Object.values(plantasObj).filter(Boolean);
-  const tipos=[...Array.from({length:10},(_,i)=>`Tipo ${String(i+1).padStart(2,'0')}`),'Cobertura'];
+  const tipos=['Geral',...Array.from({length:10},(_,i)=>`Tipo ${String(i+1).padStart(2,'0')}`),'Cobertura'];
   const tabs=[
     {id:'overview',label:'Visão Geral'},
     {id:'gallery',label:`Fotos${fotosInt.length?` (${fotosInt.length})`:''}`},
@@ -863,7 +863,7 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades}){
     setModal('form');
   };
 
-  const tipos10=[...Array.from({length:10},(_,i)=>`Tipo ${String(i+1).padStart(2,'0')}`),'Cobertura'];
+  const tipos10=['Geral',...Array.from({length:10},(_,i)=>`Tipo ${String(i+1).padStart(2,'0')}`),'Cobertura'];
   const stBadge={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
 
   return(

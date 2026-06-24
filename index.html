@@ -671,7 +671,7 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades})
     {id:'unidades',label:`Unidades${(unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length>0?` (${unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length})`:'')}`},
   ];
   return(
-    <div style={{position:'fixed',top:0,right:0,width:tab==='unidades'?720:480,height:'100vh',background:'#fff',borderLeft:'1px solid #e8eaed',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden',transition:'width .2s'}}>
+    <div style={{position:'fixed',top:0,right:0,width:720,height:'100vh',background:'#fff',borderLeft:'1px solid #e8eaed',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden',transition:'width .2s'}}>
       {lb&&<Lightbox url={lb.url} urls={lb.urls} onClose={()=>setLb(null)}/>}
       <div style={{padding:'16px 20px',borderBottom:'1px solid #e8eaed',display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexShrink:0}}>
         <div style={{flex:1,minWidth:0}}>
@@ -747,26 +747,27 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades})
             <div style={{fontSize:11,color:'#9aa0a6',fontWeight:600,textTransform:'uppercase',letterSpacing:.8,marginBottom:14}}>
               Plantas por Tipologia {allUrls.length>0&&<span style={{color:'#1a73e8'}}>({allUrls.length})</span>}
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
               {tipos.map(tipo=>{
                 const url=plantasObj[tipo];
                 return(
-                  <div key={tipo} style={{border:'1px solid #e8eaed',borderRadius:10,overflow:'hidden',background:url?'#fff':'#f8f9fa'}}>
-                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:url?'1px solid #e8eaed':'none'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontSize:13,fontWeight:700,color:'#202124'}}>{tipo}</span>
+                  <div key={tipo} style={{border:'1px solid #e8eaed',borderRadius:10,overflow:'hidden',background:url?'#fff':'#f8f9fa',display:'flex',flexDirection:'column'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',borderBottom:url?'1px solid #e8eaed':'none'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{fontSize:12,fontWeight:700,color:'#202124'}}>{tipo}</span>
                         {url
-                          ?<span style={{fontSize:10,color:'#34a853',fontWeight:600,background:'#e6f4ea',borderRadius:4,padding:'1px 7px'}}>Cadastrada</span>
-                          :<span style={{fontSize:10,color:'#9aa0a6',background:'#f1f3f4',borderRadius:4,padding:'1px 7px'}}>Sem planta</span>}
+                          ?<span style={{fontSize:9,color:'#34a853',fontWeight:600,background:'#e6f4ea',borderRadius:4,padding:'1px 6px'}}>✓</span>
+                          :<span style={{fontSize:9,color:'#9aa0a6',background:'#f1f3f4',borderRadius:4,padding:'1px 6px'}}>—</span>}
                       </div>
-                      <button onClick={onEdit} style={{padding:'4px 10px',borderRadius:6,background:'none',border:'1px solid #e8eaed',color:'#5f6368',fontSize:11,cursor:'pointer'}}>{url?'Trocar':'Adicionar'}</button>
+                      <button onClick={onEdit} style={{padding:'3px 8px',borderRadius:6,background:'none',border:'1px solid #e8eaed',color:'#5f6368',fontSize:10,cursor:'pointer'}}>{url?'Trocar':'Add'}</button>
                     </div>
-                    {url&&(
-                      <div style={{cursor:'pointer'}} onClick={()=>setLb({url,urls:allUrls})}>
-                        <img src={url} style={{width:'100%',maxHeight:180,objectFit:'contain',background:'#f8f9fa',display:'block'}} loading="lazy"/>
-                        <div style={{padding:'6px 14px',background:'#f8f9fa',fontSize:11,color:'#9aa0a6'}}>Clique para ampliar</div>
+                    {url
+                      ?<div style={{cursor:'pointer',flex:1}} onClick={()=>setLb({url,urls:allUrls})}>
+                        <img src={url} style={{width:'100%',aspectRatio:'4/5',objectFit:'cover',display:'block'}} loading="lazy"/>
+                        <div style={{padding:'4px 12px',background:'#f8f9fa',fontSize:10,color:'#9aa0a6',textAlign:'center'}}>ampliar</div>
                       </div>
-                    )}
+                      :<div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:80,color:'#d1d5db',fontSize:12}}>Sem planta</div>
+                    }
                   </div>
                 );
               })}

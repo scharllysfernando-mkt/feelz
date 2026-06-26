@@ -671,7 +671,7 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades})
     {id:'unidades',label:`Unidades${(unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length>0?` (${unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length})`:'')}`},
   ];
   return(
-    <div style={{position:'fixed',top:0,right:0,width:720,height:'100vh',background:'#fff',borderLeft:'1px solid #e8eaed',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden',transition:'width .2s'}}>
+    <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:860,height:'88vh',background:'#fff',borderRadius:16,boxShadow:'0 24px 80px rgba(0,0,0,0.25)',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {lb&&<Lightbox url={lb.url} urls={lb.urls} onClose={()=>setLb(null)}/>}
       <div style={{padding:'16px 20px',borderBottom:'1px solid #e8eaed',display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexShrink:0}}>
         <div style={{flex:1,minWidth:0}}>
@@ -909,7 +909,7 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades}){
       {imoveis.length===0&&<div style={{textAlign:'center',padding:'60px 20px',color:'#9aa0a6'}}><Icon n="bld" s={48} c="#e8eaed"/><div style={{marginTop:12,fontSize:14}}>Nenhum imóvel.</div></div>}
 
       {selected&&<>
-        <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.15)',zIndex:499}}/>
+        <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(4px)',zIndex:499}}/>
         <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)} unidades={unidades} setUnidades={setUnidades}/>
       </>}
 

@@ -506,9 +506,11 @@ function Lightbox({url,urls=[],onClose}){
   );
 }
 
-// UNIDADES TAB — componente separado para permitir useState
-function UnidadesTab({empNome,unidades,setUnidades}){
+// UNIDADES TAB
+function UnidadesTab({empNome,unidades,setUnidades,corretores,leads}){
   const [selU,setSelU]=useState(null);
+  const [modal,setModal]=useState(null); // 'reservar'|'vender'|'distrato'
+  const [form,setForm]=useState({});
   const [salvando,setSalvando]=useState(false);
   const [entrada,setEntrada]=useState(20);
   const [meses,setMeses]=useState(48);
@@ -516,25 +518,42 @@ function UnidadesTab({empNome,unidades,setUnidades}){
   const empUnits=unidades.filter(u=>u.empreendimento===empNome).sort((a,b)=>b.andar-a.andar||a.unidade-b.unidade);
   const andares=[...new Set(empUnits.map(u=>u.andar))].sort((a,b)=>b-a);
   const stColor={'Disponível':'#22C55E','Reservado':'#C8912A','Vendido':'#EF4444'};
-
-  if(empUnits.length===0) return(
-    <div style={{padding:20,textAlign:'center',color:'#9aa0a6',paddingTop:48}}>
-      <div style={{fontSize:32,marginBottom:10}}>🏢</div>
-      <div style={{fontSize:14,fontWeight:500,color:'#5f6368'}}>Sem tabela de unidades cadastrada</div>
-      <div style={{fontSize:12,color:'#9aa0a6',marginTop:6}}>Importe a tabela de vendas para visualizar o mapa.</div>
-    </div>
-  );
+  const fmtD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'—';
 
   const disp=empUnits.filter(u=>u.status==='Disponível').length;
   const vend=empUnits.filter(u=>u.status==='Vendido').length;
   const reserv=empUnits.filter(u=>u.status==='Reservado').length;
 
-  const updateStatus=async(id,status)=>{
+  const hoje=new Date().toISOString().slice(0,10);
+  const validade=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+
+  const openModal=(tipo)=>{
+    setForm({
+      corretor_id:'',lead_id:'',lead_nome:'',lead_telefone:'',
+      data_reserva:hoje,validade_reserva:validade,
+      data_venda:hoje,valor_negociado:selU?.preco||'',forma_pagamento:'Financiamento'
+    });
+    setModal(tipo);
+  };
+
+  const salvarStatus=async(novoStatus,extra={})=>{
     setSalvando(true);
-    const {data,error}=await db.from('unidades').update({status}).eq('id',id).select().single();
-    if(!error&&data){setUnidades(p=>p.map(u=>u.id===id?data:u));setSelU(data);}
+    const hist=[...(selU.historico||[]),{
+      status:novoStatus, data:hoje,
+      corretor:corretores.find(c=>c.id===extra.corretor_id)?.nome||'',
+      cliente:extra.lead_nome||'',
+      obs:extra.obs||''
+    }];
+    const payload={status:novoStatus,historico:hist,atualizado_em:new Date().toISOString(),...extra};
+    const {data,error}=await db.from('unidades').update(payload).eq('id',selU.id).select().single();
+    if(!error&&data){setUnidades(p=>p.map(u=>u.id===data.id?data:u));setSelU(data);}
     else if(error)alert('Erro: '+error.message);
-    setSalvando(false);
+    setSalvando(false);setModal(null);
+  };
+
+  const distrato=async()=>{
+    if(!confirm('Confirmar distrato? A unidade voltará para Disponível.'))return;
+    salvarStatus('Disponível',{corretor_id:null,lead_id:null,lead_nome:null,lead_telefone:null,data_reserva:null,validade_reserva:null,data_venda:null,valor_negociado:null,forma_pagamento:null,obs:'Distrato'});
   };
 
   const preco=selU?.preco||0;
@@ -543,16 +562,109 @@ function UnidadesTab({empNome,unidades,setUnidades}){
   const repasse=preco-(entV+obraV);
   const parcMes=meses>0?obraV/meses:0;
 
+  if(empUnits.length===0) return(
+    <div style={{padding:20,textAlign:'center',color:'#9aa0a6',paddingTop:48}}>
+      <div style={{fontSize:32,marginBottom:10}}>🏢</div>
+      <div style={{fontSize:14,fontWeight:500,color:'#5f6368'}}>Sem tabela de unidades cadastrada</div>
+    </div>
+  );
+
   return(
     <div style={{padding:16}}>
-      {/* Mini resumo */}
+
+      {/* Modal Reservar */}
+      {modal==='reservar'&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
+          <div style={{background:'#fff',borderRadius:14,width:420,padding:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+            <div style={{fontSize:16,fontWeight:700,color:'#102136',marginBottom:4}}>Reservar Apto {selU?.apto}</div>
+            <div style={{fontSize:13,color:'#9aa0a6',marginBottom:20}}>{selU?.tipo} · {selU?.area}m² · {fmt(selU?.preco)}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Corretor</label>
+                <select value={form.corretor_id||''} onChange={e=>setForm({...form,corretor_id:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none'}}>
+                  <option value="">Selecionar...</option>
+                  {corretores.filter(c=>!c.is_admin).map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Cliente</label>
+                <input value={form.lead_nome||''} onChange={e=>setForm({...form,lead_nome:e.target.value})} placeholder="Nome do cliente" style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Telefone</label>
+                <input value={form.lead_telefone||''} onChange={e=>setForm({...form,lead_telefone:e.target.value})} placeholder="(47) 99999-9999" style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Data Reserva</label>
+                <input type="date" value={form.data_reserva||hoje} onChange={e=>setForm({...form,data_reserva:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Validade</label>
+                <input type="date" value={form.validade_reserva||validade} onChange={e=>setForm({...form,validade_reserva:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:10,marginTop:20}}>
+              <button onClick={()=>setModal(null)} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,cursor:'pointer'}}>Cancelar</button>
+              <button onClick={()=>salvarStatus('Reservado',{...form})} disabled={salvando}
+                style={{flex:2,padding:'10px',borderRadius:8,border:'none',background:'#C8912A',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                {salvando?'Salvando...':'Confirmar Reserva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Vender */}
+      {modal==='vender'&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
+          <div style={{background:'#fff',borderRadius:14,width:420,padding:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+            <div style={{fontSize:16,fontWeight:700,color:'#102136',marginBottom:4}}>Registrar Venda — Apto {selU?.apto}</div>
+            <div style={{fontSize:13,color:'#9aa0a6',marginBottom:20}}>{selU?.tipo} · {selU?.area}m² · Tabela: {fmt(selU?.preco)}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Corretor</label>
+                <select value={form.corretor_id||''} onChange={e=>setForm({...form,corretor_id:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none'}}>
+                  <option value="">Selecionar...</option>
+                  {corretores.filter(c=>!c.is_admin).map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Cliente</label>
+                <input value={form.lead_nome||''} onChange={e=>setForm({...form,lead_nome:e.target.value})} placeholder="Nome do cliente" style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Telefone</label>
+                <input value={form.lead_telefone||''} onChange={e=>setForm({...form,lead_telefone:e.target.value})} placeholder="(47) 99999-9999" style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Data da Venda</label>
+                <input type="date" value={form.data_venda||hoje} onChange={e=>setForm({...form,data_venda:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Valor Negociado</label>
+                <input type="number" value={form.valor_negociado||''} onChange={e=>setForm({...form,valor_negociado:e.target.value})} placeholder={selU?.preco} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+              </div>
+              <div style={{gridColumn:'1/-1'}}>
+                <label style={{fontSize:11,fontWeight:700,color:'#5f6368',textTransform:'uppercase',letterSpacing:.8,display:'block',marginBottom:5}}>Forma de Pagamento</label>
+                <select value={form.forma_pagamento||'Financiamento'} onChange={e=>setForm({...form,forma_pagamento:e.target.value})} style={{width:'100%',border:'1.5px solid #e8eaed',borderRadius:8,padding:'9px 12px',fontSize:13,outline:'none'}}>
+                  {['Financiamento','À Vista','FGTS + Financiamento','Permuta','Parcelado Direto','Outro'].map(f=><option key={f}>{f}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:10,marginTop:20}}>
+              <button onClick={()=>setModal(null)} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,cursor:'pointer'}}>Cancelar</button>
+              <button onClick={()=>salvarStatus('Vendido',{...form,valor_negociado:Number(form.valor_negociado)||selU?.preco})} disabled={salvando}
+                style={{flex:2,padding:'10px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                {salvando?'Salvando...':'Registrar Venda'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
-        {[
-          {l:'Total',v:empUnits.length,c:'#5f6368'},
-          {l:'Disp.',v:disp,c:'#22C55E'},
-          {l:'Reserv.',v:reserv,c:'#C8912A'},
-          {l:'Vend.',v:vend,c:'#EF4444'},
-        ].map(({l,v,c})=>(
+        {[{l:'Total',v:empUnits.length,c:'#5f6368'},{l:'Disp.',v:disp,c:'#22C55E'},{l:'Reserv.',v:reserv,c:'#C8912A'},{l:'Vend.',v:vend,c:'#EF4444'}].map(({l,v,c})=>(
           <div key={l} style={{background:'#f8f9fa',borderRadius:8,padding:'8px',textAlign:'center',border:`1px solid ${c}30`}}>
             <div style={{fontSize:20,fontWeight:800,color:c}}>{v}</div>
             <div style={{fontSize:10,color:'#9aa0a6',fontWeight:600}}>{l}</div>
@@ -566,7 +678,7 @@ function UnidadesTab({empNome,unidades,setUnidades}){
           <div style={{padding:'6px 4px',fontSize:10,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>AND</div>
           {[1,2,3,4,5,6,7].map(n=><div key={n} style={{padding:'6px 2px',fontSize:10,fontWeight:700,color:'#9aa0a6',textAlign:'center'}}>0{n}</div>)}
         </div>
-        <div style={{maxHeight:360,overflowY:'auto'}}>
+        <div style={{maxHeight:300,overflowY:'auto'}}>
           {andares.map(andar=>{
             const units=empUnits.filter(u=>u.andar===andar);
             return(
@@ -581,7 +693,7 @@ function UnidadesTab({empNome,unidades,setUnidades}){
                       <div style={{width:42,height:42,borderRadius:8,background:c+'20',border:`2px solid ${sel?c:c+'50'}`,margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:c}}>
                         {u.apto}
                       </div>
-                      <div style={{fontSize:10,color:'#9aa0a6'}}>{u.area}m²</div>
+                      <div style={{fontSize:9,color:'#9aa0a6'}}>{u.area}m²</div>
                     </div>
                   );
                 })}
@@ -591,28 +703,106 @@ function UnidadesTab({empNome,unidades,setUnidades}){
         </div>
       </div>
 
-      {/* Painel unidade selecionada + simulador lado a lado */}
+      {/* Painel unidade selecionada */}
       {selU&&(
-        <div style={{background:'#fff',borderRadius:10,border:`1px solid ${stColor[selU.status]||'#e8eaed'}40`,overflow:'hidden',marginBottom:12}}>
-          <div style={{padding:'10px 14px',background:(stColor[selU.status]||'#888')+'15',borderBottom:`1px solid ${stColor[selU.status]||'#e8eaed'}30`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{background:'#fff',borderRadius:10,border:`1px solid ${stColor[selU.status]||'#e8eaed'}40`,overflow:'hidden'}}>
+          {/* Header */}
+          <div style={{padding:'12px 14px',background:(stColor[selU.status]||'#888')+'15',borderBottom:`1px solid ${stColor[selU.status]||'#e8eaed'}30`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
               <div style={{fontSize:16,fontWeight:800,color:'#102136'}}>Apto {selU.apto}</div>
               <div style={{fontSize:12,color:'#5f6368'}}>{selU.andar}º andar · {selU.tipo} · {selU.area}m²</div>
             </div>
-            <span style={{background:stColor[selU.status]||'#888',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:700,color:'#fff'}}>{selU.status}</span>
+            <span style={{background:stColor[selU.status]||'#888',borderRadius:6,padding:'4px 12px',fontSize:12,fontWeight:700,color:'#fff'}}>{selU.status}</span>
           </div>
+
           <div style={{padding:14}}>
-            {selU.preco&&<div style={{fontSize:20,fontWeight:800,color:'#2b9fef',marginBottom:10}}>{fmt(selU.preco)}</div>}
-            <div style={{display:'flex',gap:6,marginBottom:12}}>
-              {['Disponível','Reservado','Vendido'].map(s=>(
-                <button key={s} onClick={()=>updateStatus(selU.id,s)} disabled={salvando||selU.status===s}
-                  style={{flex:1,padding:'6px 4px',borderRadius:7,border:`1.5px solid ${selU.status===s?(stColor[s]||'#888'):'#e8eaed'}`,background:selU.status===s?(stColor[s]||'#888')+'20':'#fff',color:selU.status===s?(stColor[s]||'#888'):'#5f6368',fontSize:11,fontWeight:600,cursor:selU.status===s?'default':'pointer'}}>
-                  {s==='Disponível'?'Disp.':s}
+            {selU.preco&&<div style={{fontSize:20,fontWeight:800,color:'#2b9fef',marginBottom:12}}>{fmt(selU.preco)}</div>}
+
+            {/* Info da reserva/venda */}
+            {(selU.lead_nome||selU.corretor_id)&&(
+              <div style={{background:'#f8f9fa',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:13}}>
+                {selU.lead_nome&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Cliente</span>
+                  <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_nome}</span>
+                </div>}
+                {selU.lead_telefone&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Telefone</span>
+                  <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_telefone}</span>
+                </div>}
+                {selU.corretor_id&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Corretor</span>
+                  <span style={{fontWeight:600,color:'#102136'}}>{corretores.find(c=>c.id===selU.corretor_id)?.nome||'—'}</span>
+                </div>}
+                {selU.data_reserva&&selU.status==='Reservado'&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Reserva</span>
+                  <span style={{fontWeight:600,color:'#C8912A'}}>{fmtD(selU.data_reserva)} → {fmtD(selU.validade_reserva)}</span>
+                </div>}
+                {selU.data_venda&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Data venda</span>
+                  <span style={{fontWeight:600,color:'#EF4444'}}>{fmtD(selU.data_venda)}</span>
+                </div>}
+                {selU.valor_negociado&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                  <span style={{color:'#9aa0a6'}}>Valor negociado</span>
+                  <span style={{fontWeight:600,color:'#22C55E'}}>{fmt(selU.valor_negociado)}</span>
+                </div>}
+                {selU.forma_pagamento&&<div style={{display:'flex',justifyContent:'space-between'}}>
+                  <span style={{color:'#9aa0a6'}}>Pagamento</span>
+                  <span style={{fontWeight:600,color:'#102136'}}>{selU.forma_pagamento}</span>
+                </div>}
+              </div>
+            )}
+
+            {/* Ações por status */}
+            {selU.status==='Disponível'&&(
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>openModal('reservar')}
+                  style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#C8912A',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  🔒 Reservar
                 </button>
-              ))}
-            </div>
-            {selU.preco&&(
-              <div>
+                <button onClick={()=>openModal('vender')}
+                  style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  ✅ Registrar Venda
+                </button>
+              </div>
+            )}
+            {selU.status==='Reservado'&&(
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={distrato}
+                  style={{flex:1,padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  ↩ Distrato
+                </button>
+                <button onClick={()=>openModal('vender')}
+                  style={{flex:2,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  ✅ Confirmar Venda
+                </button>
+              </div>
+            )}
+            {selU.status==='Vendido'&&(
+              <button onClick={distrato}
+                style={{width:'100%',padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                ↩ Registrar Distrato
+              </button>
+            )}
+
+            {/* Histórico */}
+            {selU.historico&&selU.historico.length>0&&(
+              <div style={{marginTop:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Histórico</div>
+                {[...selU.historico].reverse().map((h,i)=>(
+                  <div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+                    <div style={{width:8,height:8,borderRadius:'50%',background:stColor[h.status]||'#888',flexShrink:0,marginTop:4}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:600,color:'#202124'}}>{h.status} {h.obs?`— ${h.obs}`:''}</div>
+                      <div style={{color:'#9aa0a6'}}>{h.data?new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR'):''}{h.corretor?` · ${h.corretor}`:''}{h.cliente?` · ${h.cliente}`:''}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Simulador */}
+            {selU.preco&&selU.status==='Disponível'&&(
+              <div style={{marginTop:14}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Simulador</div>
                 <div style={{marginBottom:8}}>
                   <div style={{fontSize:11,color:'#5f6368',marginBottom:3}}>Entrada: <b style={{color:'#22C55E'}}>{entrada}% = {fmt(entV)}</b></div>
@@ -637,7 +827,7 @@ function UnidadesTab({empNome,unidades,setUnidades}){
       )}
 
       {/* Legenda */}
-      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+      <div style={{display:'flex',gap:12,marginTop:12,justifyContent:'center'}}>
         {Object.entries(stColor).map(([s,c])=>(
           <div key={s} style={{display:'flex',alignItems:'center',gap:4,fontSize:11}}>
             <div style={{width:10,height:10,borderRadius:3,background:c}}/>
@@ -651,7 +841,7 @@ function UnidadesTab({empNome,unidades,setUnidades}){
 
 
 // DETAIL PANEL
-function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades}){
+function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades,corretores=[],leads=[]}){
   const [tab,setTab]=useState('overview');
   const [lb,setLb]=useState(null);
   const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
@@ -783,14 +973,14 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades})
             </div>
           </div>
         )}
-        {tab==='unidades'&&<UnidadesTab empNome={selected.empreendimento||selected.titulo} unidades={unidades} setUnidades={setUnidades}/>}
+        {tab==='unidades'&&<UnidadesTab empNome={selected.empreendimento||selected.titulo} unidades={unidades} setUnidades={setUnidades} corretores={corretores} leads={leads}/>}
       </div>
     </div>
   );
 }
 
 // IMÓVEIS
-function Imoveis({imoveis,setImoveis,user,unidades,setUnidades}){
+function Imoveis({imoveis,setImoveis,user,unidades,setUnidades,corretores,leads}){
   const [modal,setModal]=useState(null);
   const [selected,setSelected]=useState(null);
   const [editImovel,setEditImovel]=useState(null);
@@ -910,7 +1100,7 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades}){
 
       {selected&&<>
         <div onClick={()=>setSelected(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(4px)',zIndex:499}}/>
-        <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)} unidades={unidades} setUnidades={setUnidades}/>
+        <DetailPanel selected={selected} onClose={()=>setSelected(null)} onEdit={()=>openEdit(selected)} onDelete={()=>deleteImovel(selected.id)} unidades={unidades} setUnidades={setUnidades} corretores={corretores} leads={leads}/>
       </>}
 
       {modal==='form'&&(
@@ -1485,7 +1675,7 @@ function App(){
             :<>
               {sec==='dashboard'&&<Dashboard leads={leads} tarefas={tarefas} visitas={visitas} imoveis={imoveis} user={user} isAdmin={isAdmin} corretores={corretores} setSec={setSec}/>}
               {sec==='pipeline'&&<Pipeline leads={leads} imoveis={imoveis} user={user} isAdmin={isAdmin} setLeads={setLeads} corretores={corretores}/>}
-              {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user} unidades={unidades} setUnidades={setUnidades}/>}
+              {sec==='imoveis'&&<Imoveis imoveis={imoveis} setImoveis={setImoveis} user={user} unidades={unidades} setUnidades={setUnidades} corretores={corretores} leads={leads}/>}
               {sec==='agenda'&&<Agenda visitas={visitas} user={user} isAdmin={isAdmin}/>}
               {sec==='tarefas'&&<Tarefas tarefas={tarefas} setTarefas={setTarefas} user={user} isAdmin={isAdmin}/>}
               {sec==='relatorios'&&<Relatorios leads={leads} corretores={corretores}/>}

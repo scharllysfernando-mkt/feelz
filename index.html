@@ -1062,20 +1062,11 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades,corretores,leads}
         <h1 className="page-title">Imóveis</h1>
         <button className="btn btn-primary" onClick={()=>{setFormData(emptyForm);setEditImovel(null);setModal('form');}}><Icon n="plus" s={15}/> Captar Imóvel</button>
       </div>
-      {Array.from(new Set(imoveis.map(im=>im.empreendimento||im.titulo))).map(emp=>{
-        const grupo=imoveis.filter(im=>(im.empreendimento||im.titulo)===emp);
-        return(
-          <div key={emp} style={{marginBottom:32}}>
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
-              <h2 style={{fontSize:16,fontWeight:800,color:'#102136'}}>{emp}</h2>
-              <div style={{flex:1,height:1,background:'#e8eaed'}}/>
-              <span style={{fontSize:12,color:'#9aa0a6'}}>{grupo.length} tipologia{grupo.length>1?'s':''}</span>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
-              {grupo.map(im=>(
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+        {imoveis.map(im=>(
                 <div key={im.id} onClick={()=>setSelected(im)}
                   style={{cursor:'pointer',borderRadius:14,overflow:'hidden',background:'#fff',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:`2px solid ${selected&&selected.id===im.id?'#2b9fef':'transparent'}`,transition:'all .2s'}}>
-                  <div style={{height:280,position:'relative',overflow:'hidden',background:'linear-gradient(160deg,#0f1e2b,#1e3347)'}}>
+                  <div style={{height:320,position:'relative',overflow:'hidden',background:'linear-gradient(160deg,#0f1e2b,#1e3347)'}}>
                     {im.foto_url
                       ?<img src={im.foto_url} style={{width:'100%',height:'100%',objectFit:'cover',position:'absolute',top:0,left:0}} loading="lazy"/>
                       :<div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}><Icon n="bld" s={40} c="rgba(255,255,255,0.15)"/><div style={{fontSize:11,color:'rgba(255,255,255,0.3)'}}>Sem foto</div></div>}
@@ -1083,6 +1074,7 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades,corretores,leads}
                     <div style={{position:'absolute',top:10,right:10}}><span style={{background:`${stBadge[im.status]||'#888'}CC`,borderRadius:6,padding:'3px 10px',fontSize:11,color:'#fff',fontWeight:600}}>{im.status}</span></div>
                   </div>
                   <div style={{padding:'14px 16px'}}>
+                    {im.empreendimento&&<div style={{fontSize:15,color:'#102136',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.empreendimento}</div>}
                     <div style={{fontSize:14,fontWeight:700,color:'#102136',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.titulo}</div>
                     <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:10}}><Icon n="pin" s={12} c="#9aa0a6"/><span style={{fontSize:12,color:'#9aa0a6',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{im.localizacao}</span></div>
                     <div style={{display:'flex',justifyContent:'space-between'}}>
@@ -1091,11 +1083,8 @@ function Imoveis({imoveis,setImoveis,user,unidades,setUnidades,corretores,leads}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+        ))}
+      </div>
       {imoveis.length===0&&<div style={{textAlign:'center',padding:'60px 20px',color:'#9aa0a6'}}><Icon n="bld" s={48} c="#e8eaed"/><div style={{marginTop:12,fontSize:14}}>Nenhum imóvel.</div></div>}
 
       {selected&&<>

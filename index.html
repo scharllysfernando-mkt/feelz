@@ -715,110 +715,121 @@ function UnidadesTab({empNome,unidades,setUnidades,corretores,leads}){
             <span style={{background:stColor[selU.status]||'#888',borderRadius:6,padding:'4px 12px',fontSize:12,fontWeight:700,color:'#fff'}}>{selU.status}</span>
           </div>
 
-          <div style={{padding:14}}>
-            {selU.preco&&<div style={{fontSize:20,fontWeight:800,color:'#2b9fef',marginBottom:12}}>{fmt(selU.preco)}</div>}
+          <div style={{padding:14, display:'flex', gap:24}}>
+            <div style={{flex:1}}>
+              {selU.preco&&<div style={{fontSize:20,fontWeight:800,color:'#2b9fef',marginBottom:12}}>{fmt(selU.preco)}</div>}
 
-            {/* Info da reserva/venda */}
-            {(selU.lead_nome||selU.corretor_id)&&(
-              <div style={{background:'#f8f9fa',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:13}}>
-                {selU.lead_nome&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Cliente</span>
-                  <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_nome}</span>
-                </div>}
-                {selU.lead_telefone&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Telefone</span>
-                  <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_telefone}</span>
-                </div>}
-                {selU.corretor_id&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Corretor</span>
-                  <span style={{fontWeight:600,color:'#102136'}}>{corretores.find(c=>c.id===selU.corretor_id)?.nome||'—'}</span>
-                </div>}
-                {selU.data_reserva&&selU.status==='Reservado'&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Reserva</span>
-                  <span style={{fontWeight:600,color:'#C8912A'}}>{fmtD(selU.data_reserva)} → {fmtD(selU.validade_reserva)}</span>
-                </div>}
-                {selU.data_venda&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Data venda</span>
-                  <span style={{fontWeight:600,color:'#EF4444'}}>{fmtD(selU.data_venda)}</span>
-                </div>}
-                {selU.valor_negociado&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                  <span style={{color:'#9aa0a6'}}>Valor negociado</span>
-                  <span style={{fontWeight:600,color:'#22C55E'}}>{fmt(selU.valor_negociado)}</span>
-                </div>}
-                {selU.forma_pagamento&&<div style={{display:'flex',justifyContent:'space-between'}}>
-                  <span style={{color:'#9aa0a6'}}>Pagamento</span>
-                  <span style={{fontWeight:600,color:'#102136'}}>{selU.forma_pagamento}</span>
-                </div>}
-              </div>
-            )}
+              {/* Info da reserva/venda */}
+              {(selU.lead_nome||selU.corretor_id)&&(
+                <div style={{background:'#f8f9fa',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:13}}>
+                  {selU.lead_nome&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Cliente</span>
+                    <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_nome}</span>
+                  </div>}
+                  {selU.lead_telefone&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Telefone</span>
+                    <span style={{fontWeight:600,color:'#102136'}}>{selU.lead_telefone}</span>
+                  </div>}
+                  {selU.corretor_id&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Corretor</span>
+                    <span style={{fontWeight:600,color:'#102136'}}>{corretores.find(c=>c.id===selU.corretor_id)?.nome||'—'}</span>
+                  </div>}
+                  {selU.data_reserva&&selU.status==='Reservado'&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Reserva</span>
+                    <span style={{fontWeight:600,color:'#C8912A'}}>{fmtD(selU.data_reserva)} → {fmtD(selU.validade_reserva)}</span>
+                  </div>}
+                  {selU.data_venda&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Data venda</span>
+                    <span style={{fontWeight:600,color:'#EF4444'}}>{fmtD(selU.data_venda)}</span>
+                  </div>}
+                  {selU.valor_negociado&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{color:'#9aa0a6'}}>Valor negociado</span>
+                    <span style={{fontWeight:600,color:'#22C55E'}}>{fmt(selU.valor_negociado)}</span>
+                  </div>}
+                  {selU.forma_pagamento&&<div style={{display:'flex',justifyContent:'space-between'}}>
+                    <span style={{color:'#9aa0a6'}}>Pagamento</span>
+                    <span style={{fontWeight:600,color:'#102136'}}>{selU.forma_pagamento}</span>
+                  </div>}
+                </div>
+              )}
 
-            {/* Ações por status */}
-            {selU.status==='Disponível'&&(
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>openModal('reservar')}
-                  style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#C8912A',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  🔒 Reservar
-                </button>
-                <button onClick={()=>openModal('vender')}
-                  style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  ✅ Registrar Venda
-                </button>
-              </div>
-            )}
-            {selU.status==='Reservado'&&(
-              <div style={{display:'flex',gap:8}}>
+              {/* Ações por status */}
+              {selU.status==='Disponível'&&(
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>openModal('reservar')}
+                    style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#C8912A',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    🔒 Reservar
+                  </button>
+                  <button onClick={()=>openModal('vender')}
+                    style={{flex:1,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    ✅ Registrar Venda
+                  </button>
+                </div>
+              )}
+              {selU.status==='Reservado'&&(
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={distrato}
+                    style={{flex:1,padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    ↩ Distrato
+                  </button>
+                  <button onClick={()=>openModal('vender')}
+                    style={{flex:2,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    ✅ Confirmar Venda
+                  </button>
+                </div>
+              )}
+              {selU.status==='Vendido'&&(
                 <button onClick={distrato}
-                  style={{flex:1,padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  ↩ Distrato
+                  style={{width:'100%',padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  ↩ Registrar Distrato
                 </button>
-                <button onClick={()=>openModal('vender')}
-                  style={{flex:2,padding:'9px',borderRadius:8,border:'none',background:'#EF4444',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                  ✅ Confirmar Venda
-                </button>
-              </div>
-            )}
-            {selU.status==='Vendido'&&(
-              <button onClick={distrato}
-                style={{width:'100%',padding:'9px',borderRadius:8,border:'1px solid #e8eaed',background:'#f8f9fa',color:'#5f6368',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                ↩ Registrar Distrato
-              </button>
-            )}
+              )}
 
-            {/* Histórico */}
-            {selU.historico&&selU.historico.length>0&&(
-              <div style={{marginTop:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Histórico</div>
-                {[...selU.historico].reverse().map((h,i)=>(
-                  <div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
-                    <div style={{width:8,height:8,borderRadius:'50%',background:stColor[h.status]||'#888',flexShrink:0,marginTop:4}}/>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:600,color:'#202124'}}>{h.status} {h.obs?`— ${h.obs}`:''}</div>
-                      <div style={{color:'#9aa0a6'}}>{h.data?new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR'):''}{h.corretor?` · ${h.corretor}`:''}{h.cliente?` · ${h.cliente}`:''}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Simulador */}
-            {selU.preco&&selU.status==='Disponível'&&(
-              <div style={{marginTop:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Simulador</div>
-                <div style={{marginBottom:8}}>
-                  <div style={{fontSize:11,color:'#5f6368',marginBottom:3}}>Entrada: <b style={{color:'#22C55E'}}>{entrada}% = {fmt(entV)}</b></div>
-                  <input type="range" min={5} max={50} value={entrada} onChange={e=>setEntrada(Number(e.target.value))} style={{width:'100%',accentColor:'#22C55E'}}/>
-                </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:'#5f6368',marginBottom:3}}>Obra: <b style={{color:'#C8912A'}}>{meses}x = {fmt(parcMes)}/mês</b></div>
-                  <input type="range" min={12} max={60} value={meses} onChange={e=>setMeses(Number(e.target.value))} style={{width:'100%',accentColor:'#C8912A'}}/>
-                </div>
-                <div style={{borderTop:'1px solid #f1f5f9',paddingTop:10}}>
-                  {[{l:'Entrada',v:fmt(entV),c:'#22C55E'},{l:`Obra (${meses}x)`,v:fmt(parcMes)+'/mês',c:'#C8912A'},{l:'Repasse',v:fmt(repasse),c:'#2b9fef'}].map(({l,v,c})=>(
-                    <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                      <span style={{fontSize:12,color:'#5f6368'}}>{l}</span>
-                      <span style={{fontSize:13,fontWeight:700,color:c}}>{v}</span>
+              {/* Histórico */}
+              {selU.historico&&selU.historico.length>0&&(
+                <div style={{marginTop:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Histórico</div>
+                  {[...selU.historico].reverse().map((h,i)=>(
+                    <div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:stColor[h.status]||'#888',flexShrink:0,marginTop:4}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,color:'#202124'}}>{h.status} {h.obs?`— ${h.obs}`:''}</div>
+                        <div style={{color:'#9aa0a6'}}>{h.data?new Date(h.data+'T12:00:00').toLocaleDateString('pt-BR'):''}{h.corretor?` · ${h.corretor}`:''}{h.cliente?` · ${h.cliente}`:''}</div>
+                      </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Simulador à Direita */}
+            {selU.preco&&selU.status==='Disponível'&&(
+              <div style={{width:320, background:'#f8f9fa', borderRadius:12, padding:20, border:'1px solid #e8eaed'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#9aa0a6',textTransform:'uppercase',letterSpacing:1,marginBottom:15}}>Simulador de Financiamento</div>
+                <div style={{marginBottom:15}}>
+                  <div style={{fontSize:12,color:'#5f6368',marginBottom:6,display:'flex',justifyContent:'space-between'}}>
+                    <span>Entrada ({entrada}%)</span>
+                    <b style={{color:'#22C55E'}}>{fmt(entV)}</b>
+                  </div>
+                  <input type="range" min={5} max={50} value={entrada} onChange={e=>setEntrada(Number(e.target.value))} style={{width:'100%',accentColor:'#22C55E'}}/>
+                </div>
+                <div style={{marginBottom:20}}>
+                  <div style={{fontSize:12,color:'#5f6368',marginBottom:6,display:'flex',justifyContent:'space-between'}}>
+                    <span>Prazo Obra ({meses}x)</span>
+                    <b style={{color:'#C8912A'}}>{fmt(parcMes)}/mês</b>
+                  </div>
+                  <input type="range" min={12} max={60} value={meses} onChange={e=>setMeses(Number(e.target.value))} style={{width:'100%',accentColor:'#C8912A'}}/>
+                </div>
+                <div style={{background:'#fff', borderRadius:10, padding:15, border:'1px solid #e8eaed'}}>
+                  {[{l:'Entrada',v:fmt(entV),c:'#22C55E'},{l:`Parcelas (${meses}x)`,v:fmt(parcMes),c:'#C8912A'},{l:'Saldo Repasse',v:fmt(repasse),c:'#2b9fef'}].map(({l,v,c})=>(
+                    <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:10, borderBottom:l==='Saldo Repasse'?'none':'1px solid #f1f5f9', paddingBottom:l==='Saldo Repasse'?0:10}}>
+                      <span style={{fontSize:12,color:'#5f6368'}}>{l}</span>
+                      <span style={{fontSize:14,fontWeight:800,color:c}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:15, fontSize:10, color:'#9aa0a6', textAlign:'center', fontStyle:'italic'}}>
+                  * Valores sujeitos a alteração e aprovação de crédito.
                 </div>
               </div>
             )}
@@ -866,7 +877,7 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades,c
     {id:'unidades',label:`Unidades${(unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length>0?` (${unidades.filter(u=>u.empreendimento===(selected.empreendimento||selected.titulo)).length})`:'')}`},
   ];
   return(
-    <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:860,height:'88vh',background:'#fff',borderRadius:16,boxShadow:'0 24px 80px rgba(0,0,0,0.25)',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:1100,maxWidth:'95vw',height:'90vh',background:'#fff',borderRadius:16,boxShadow:'0 24px 80px rgba(0,0,0,0.25)',zIndex:500,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       {lb&&<Lightbox url={lb.url} urls={lb.urls} onClose={()=>setLb(null)}/>}
       <div style={{padding:'16px 20px',borderBottom:'1px solid #e8eaed',display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexShrink:0}}>
         <div style={{flex:1,minWidth:0}}>

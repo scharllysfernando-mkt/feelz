@@ -844,6 +844,7 @@ function UnidadesTab({empNome,unidades,setUnidades,corretores,leads}){
 function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades,corretores=[],leads=[],onSelectTipologia,onAddTipologia,onBackToGroup}){
   const isGroup=!!selected.__group;
   const [tab,setTab]=useState(isGroup?'tipologias':'overview');
+  useEffect(()=>{setTab(isGroup?'tipologias':'overview');},[selected.id]);
   const [lb,setLb]=useState(null);
   const stC={Disponível:'#22C55E',Negociando:'#C8912A',Reservado:'#8B5CF6',Vendido:'#EF4444'};
   const parseArr=v=>{if(!v)return[];if(Array.isArray(v))return v;try{const p=JSON.parse(v);return Array.isArray(p)?p:[p];}catch(e){return[v];}};
@@ -984,14 +985,14 @@ function DetailPanel({selected,onClose,onEdit,onDelete,unidades=[],setUnidades,c
             </div>
           </div>
         )}
-        {tab==='tipologias'&&(
+        {tab==='tipologias' && isGroup && (
           <div style={{padding:'16px 20px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
               <div style={{fontSize:11,color:'#9aa0a6',fontWeight:600,textTransform:'uppercase',letterSpacing:.8}}>Tipologias do empreendimento</div>
               {onAddTipologia&&<button onClick={()=>onAddTipologia(selected.empreendimento)} style={{padding:'6px 12px',borderRadius:7,background:'#1a73e8',border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer'}}>+ Nova tipologia</button>}
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-              {selected.__items.map(it=>(
+              {(selected.__items || []).map(it=>(
                 <div key={it.id} onClick={()=>onSelectTipologia&&onSelectTipologia(it,selected)}
                   style={{border:'1px solid #e8eaed',borderRadius:10,overflow:'hidden',background:'#fff',cursor:'pointer'}}>
                   <div style={{aspectRatio:'16/9',background:'linear-gradient(160deg,#0f1e2b,#1e3347)',position:'relative'}}>
